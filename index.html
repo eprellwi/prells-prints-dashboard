@@ -236,10 +236,12 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--tx);min-heigh
 <div class="page active" id="page-analytics">
 
   <div class="connect-banner" id="connect-banner">
-    <p><strong>Connect your Etsy account</strong> to see live data. Paste your access token below.</p>
+    <p><strong>Upload your Etsy CSVs</strong> to load your shop data. Export from Etsy → Shop Manager → Orders → Download CSV.</p>
     <div class="token-form">
-      <input type="password" class="token-input" id="etsy-token-input" placeholder="Paste your Etsy access token..."/>
-      <button class="token-btn" onclick="connectEtsy()">Connect Etsy →</button>
+      <label class="token-btn" style="cursor:pointer;">
+        📂 Upload Orders CSV
+        <input type="file" id="csv-upload" accept=".csv" multiple style="display:none" onchange="handleCSV(this)"/>
+      </label>
     </div>
   </div>
 
@@ -494,18 +496,83 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--tx);min-heigh
 
 <script>
 // ── CONFIG ──────────────────────────────────────
-const ETSY_KEY = '60megc96vue75h2ycvdkihb7';
-let etsyToken = localStorage.getItem('etsy_token') || '';
 let ideaHist = [], pubImgData = null;
 
 // ── INIT ─────────────────────────────────────────
 window.onload = function() {
-  if (etsyToken) {
-    document.getElementById('connect-banner').style.display = 'none';
-    setConnected(true);
-    loadEtsyData();
+  // Try to restore full saved data
+  const saved = localStorage.getItem('etsy_full_data');
+  if (saved) {
+    try {
+      const d = JSON.parse(saved);
+      restoreFromSaved(d);
+    } catch(e) { console.log('Could not restore saved data:', e); }
   }
 };
+
+function restoreFromSaved(d) {
+  const { totalRevenue, totalOrders, aov, monthly, topListings, savedAt } = d;
+  const saveDate = savedAt ? new Date(savedAt).toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'}) : 'previously';
+
+  // Summary stats
+  document.getElementById('s-rev').textContent = '$' + Math.round(totalRevenue).toLocaleString();
+  document.getElementById('s-orders').textContent = totalOrders.toLocaleString() + ' orders';
+
+  // Etsy stats strip
+  document.getElementById('etsy-stats').innerHTML = `
+    <div class="stat-cell accent">
+      <div class="sc-label">Total Revenue</div>
+      <div class="sc-val">$${Math.round(totalRevenue).toLocaleString()}</div>
+      <div class="sc-sub up">${totalOrders.toLocaleString()} orders</div>
+    </div>
+    <div class="stat-cell">
+      <div class="sc-label">Avg Order Value</div>
+      <div class="sc-val">$${aov.toFixed(2)}</div>
+      <div class="sc-sub">Per transaction</div>
+    </div>
+    <div class="stat-cell">
+      <div class="sc-label">Unique Items</div>
+      <div class="sc-val">${topListings.length}+</div>
+      <div class="sc-sub">Distinct listings sold</div>
+    </div>
+    <div class="stat-cell">
+      <div class="sc-label">Last Updated</div>
+      <div class="sc-val" style="font-size:13px">${saveDate}</div>
+      <div class="sc-sub">Upload CSV to refresh</div>
+    </div>`;
+
+  // Top listings table
+  if (topListings && topListings.length) {
+    document.getElementById('etsy-listings').innerHTML = topListings.map(([name, qty, rev], i) => `
+      <tr>
+        <td style="color:var(--mu)">${i+1}</td>
+        <td>${name.slice(0,55)}${name.length>55?'...':''}</td>
+        <td>$${(rev/qty).toFixed(2)}</td>
+        <td>${qty}</td>
+        <td><span class="badge b-green">$${Math.round(rev).toLocaleString()}</span></td>
+      </tr>`).join('');
+  }
+
+  // Monthly trend
+  if (monthly) {
+    const monthKeys = Object.keys(monthly).sort();
+    const maxRev = Math.max(...Object.values(monthly));
+    const trendBars = monthKeys.map(m => {
+      const h = Math.max(3, Math.round((monthly[m]/maxRev)*100));
+      return `<div class="tc-bar" style="height:${h}%;background:var(--ol)"><span class="tip">${m}: $${Math.round(monthly[m]).toLocaleString()}</span></div>`;
+    }).join('');
+    const trendLabels = monthKeys.map(m => `<div class="tc-lbl">${m.slice(5,7)}/${m.slice(2,4)}</div>`).join('');
+    const trendEl = document.querySelector('#av-etsy .trend-chart');
+    const labelEl = document.querySelector('#av-etsy .trend-labels');
+    if (trendEl) trendEl.outerHTML = `<div class="trend-chart">${trendBars}</div>`;
+    if (labelEl) labelEl.outerHTML = `<div class="trend-labels">${trendLabels}</div>`;
+  }
+
+  document.getElementById('etsy-loading').style.display = 'none';
+  document.getElementById('etsy-data').style.display = 'block';
+  document.getElementById('connect-banner').style.display = 'none';
+  setConnected(true, 'Data loaded · ' + saveDate);
+}
 
 // ── NAV ──────────────────────────────────────────
 function showPage(id, btn) {
@@ -523,79 +590,158 @@ function showAV(id, btn) {
   btn.classList.add(cls[id]);
 }
 
-// ── CONNECT ──────────────────────────────────────
+// ── CSV PARSING ──────────────────────────────────
 function showConnectForm() {
   document.getElementById('connect-banner').style.display = 'flex';
-  document.getElementById('etsy-token-input').focus();
 }
 
-function connectEtsy() {
-  const tok = document.getElementById('etsy-token-input').value.trim();
-  if (!tok) { alert('Please paste your Etsy access token.'); return; }
-  etsyToken = tok;
-  localStorage.setItem('etsy_token', tok);
-  document.getElementById('connect-banner').style.display = 'none';
-  setConnected(true);
-  loadEtsyData();
-}
-
-function setConnected(live) {
+function setConnected(live, label) {
   document.getElementById('status-dot').className = 'status-dot' + (live ? ' live' : '');
-  document.getElementById('status-txt').textContent = live ? 'Etsy connected' : 'Not connected';
+  document.getElementById('status-txt').textContent = label || (live ? 'CSV loaded' : 'Not connected');
 }
 
-// ── ETSY API ─────────────────────────────────────
-async function etsyGet(path) {
-  const res = await fetch('https://api.etsy.com/v3/application' + path, {
-    headers: { 'Authorization': 'Bearer ' + etsyToken, 'x-api-key': ETSY_KEY }
+function handleCSV(input) {
+  const files = Array.from(input.files);
+  if (!files.length) return;
+  let allRows = [];
+  let filesRead = 0;
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const rows = parseCSV(e.target.result);
+      allRows = allRows.concat(rows);
+      filesRead++;
+      if (filesRead === files.length) processCSVData(allRows);
+    };
+    reader.readAsText(file);
   });
-  if (!res.ok) throw new Error('Etsy API error: ' + res.status);
-  return res.json();
 }
 
-async function loadEtsyData() {
-  const loadEl = document.getElementById('etsy-loading');
-  const dataEl = document.getElementById('etsy-data');
-  loadEl.innerHTML = '<div class="spinner"></div> Loading your live Etsy data...';
-  try {
-    // Get user
-    const user = await etsyGet('/users/me');
-    const userId = user.user_id;
+function parseCSV(text) {
+  const lines = text.split('\n');
+  // Find header row
+  let headerIdx = 0;
+  for (let i = 0; i < Math.min(20, lines.length); i++) {
+    if (lines[i].includes('Sale Date') || lines[i].includes('Item Name') || lines[i].includes('Order ID')) {
+      headerIdx = i; break;
+    }
+  }
+  const headers = lines[headerIdx].split(',').map(h => h.trim().replace(/"/g,''));
+  const rows = [];
+  for (let i = headerIdx + 1; i < lines.length; i++) {
+    if (!lines[i].trim()) continue;
+    const vals = lines[i].match(/(".*?"|[^,]+)(?=,|$)/g) || lines[i].split(',');
+    const row = {};
+    headers.forEach((h, idx) => { row[h] = (vals[idx] || '').trim().replace(/"/g,''); });
+    if (row['Sale Date'] || row['Order ID']) rows.push(row);
+  }
+  return rows;
+}
 
-    // Get shop
-    const shop = await etsyGet('/users/' + userId + '/shops');
-    const shopId = shop.shop_id;
-    const shopName = shop.shop_name;
+function processCSVData(rows) {
+  if (!rows.length) { alert('Could not parse CSV. Make sure you uploaded an Etsy Orders CSV.'); return; }
 
-    // Update summary stats
-    document.getElementById('s-rev').textContent = '$' + (shop.transaction_sold_count * 8.31).toFixed(0);
-    document.getElementById('s-orders').textContent = shop.transaction_sold_count + ' total orders';
+  // Calculate revenue
+  let totalRevenue = 0;
+  const monthly = {};
+  const itemCounts = {};
+  const itemRevenue = {};
 
-    // Update stats strip
-    document.getElementById('etsy-stats').innerHTML = `
-      <div class="stat-cell accent"><div class="sc-label">Shop Name</div><div class="sc-val" style="font-size:16px">${shopName}</div><div class="sc-sub up">Live data</div></div>
-      <div class="stat-cell"><div class="sc-label">Total Sales</div><div class="sc-val">${shop.transaction_sold_count || '—'}</div><div class="sc-sub">All time</div></div>
-      <div class="stat-cell"><div class="sc-label">Active Listings</div><div class="sc-val">${shop.listing_active_count || '—'}</div><div class="sc-sub">Currently live</div></div>
-      <div class="stat-cell"><div class="sc-label">Shop Currency</div><div class="sc-val">${shop.currency_code || 'USD'}</div><div class="sc-sub">Payout currency</div></div>`;
+  rows.forEach(r => {
+    const amt = parseFloat((r['Item Total'] || r['Order Total'] || r['Sale Amount'] || '0').replace(/[$,]/g,'')) || 0;
+    totalRevenue += amt;
 
-    // Get listings
-    const listings = await etsyGet('/shops/' + shopId + '/listings/active?limit=10&sort_on=views&sort_order=desc');
-    if (listings.results && listings.results.length) {
-      document.getElementById('etsy-listings').innerHTML = listings.results.map((l, i) => `
-        <tr>
-          <td style="color:var(--mu)">${i+1}</td>
-          <td><a href="${l.url}" target="_blank" style="color:var(--etsy);text-decoration:none">${l.title.slice(0,50)}${l.title.length>50?'...':''}</a></td>
-          <td>$${(l.price.amount / l.price.divisor).toFixed(2)}</td>
-          <td>${l.quantity}</td>
-          <td><span class="badge ${l.state==='active'?'b-green':'b-gray'}">${l.state}</span></td>
-        </tr>`).join('');
+    // Monthly breakdown
+    const date = r['Sale Date'] || r['Date'] || '';
+    if (date) {
+      const parts = date.split('/');
+      const monthKey = parts.length >= 2 ? parts[2]?.slice(-4) + '-' + parts[0]?.padStart(2,'0') : date.slice(0,7);
+      monthly[monthKey] = (monthly[monthKey] || 0) + amt;
     }
 
-    loadEl.style.display = 'none';
-    dataEl.style.display = 'block';
+    // Item counts
+    const name = r['Item Name'] || r['Title'] || 'Unknown';
+    const qty = parseInt(r['Quantity'] || '1') || 1;
+    itemCounts[name] = (itemCounts[name] || 0) + qty;
+    itemRevenue[name] = (itemRevenue[name] || 0) + amt;
+  });
 
+  const totalOrders = rows.length;
+  const aov = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+
+  // Update summary
+  document.getElementById('s-rev').textContent = '$' + Math.round(totalRevenue).toLocaleString();
+  document.getElementById('s-orders').textContent = totalOrders.toLocaleString() + ' orders · from CSV';
+
+  // Update etsy stats
+  document.getElementById('etsy-stats').innerHTML = `
+    <div class="stat-cell accent">
+      <div class="sc-label">Total Revenue</div>
+      <div class="sc-val">$${Math.round(totalRevenue).toLocaleString()}</div>
+      <div class="sc-sub up">${totalOrders.toLocaleString()} orders</div>
+    </div>
+    <div class="stat-cell">
+      <div class="sc-label">Avg Order Value</div>
+      <div class="sc-val">$${aov.toFixed(2)}</div>
+      <div class="sc-sub">Per transaction</div>
+    </div>
+    <div class="stat-cell">
+      <div class="sc-label">Unique Items</div>
+      <div class="sc-val">${Object.keys(itemCounts).length}</div>
+      <div class="sc-sub">Distinct listings sold</div>
+    </div>
+    <div class="stat-cell">
+      <div class="sc-label">Date Range</div>
+      <div class="sc-val" style="font-size:14px">${Object.keys(monthly).sort()[0] || '—'}</div>
+      <div class="sc-sub">to ${Object.keys(monthly).sort().pop() || '—'}</div>
+    </div>`;
+
+  // Top listings
+  const sorted = Object.entries(itemCounts).sort((a,b) => b[1]-a[1]).slice(0,10);
+  document.getElementById('etsy-listings').innerHTML = sorted.map(([name, qty], i) => `
+    <tr>
+      <td style="color:var(--mu)">${i+1}</td>
+      <td>${name.slice(0,55)}${name.length>55?'...':''}</td>
+      <td>$${((itemRevenue[name]||0)/qty).toFixed(2)}</td>
+      <td>${qty}</td>
+      <td><span class="badge b-green">$${Math.round(itemRevenue[name]||0).toLocaleString()}</span></td>
+    </tr>`).join('');
+
+  // Monthly trend bars
+  const monthKeys = Object.keys(monthly).sort();
+  const maxRev = Math.max(...Object.values(monthly));
+  const trendBars = monthKeys.map(m => {
+    const h = Math.max(3, Math.round((monthly[m]/maxRev)*100));
+    const label = m.slice(0,7);
+    return `<div class="tc-bar" style="height:${h}%;background:var(--ol)"><span class="tip">${label}: $${Math.round(monthly[m]).toLocaleString()}</span></div>`;
+  }).join('');
+  const trendLabels = monthKeys.map(m => `<div class="tc-lbl">${m.slice(5,7)}/${m.slice(2,4)}</div>`).join('');
+
+  // Replace the hardcoded 2026 trend with real data
+  const trendEl = document.querySelector('#av-etsy .trend-chart');
+  const labelEl = document.querySelector('#av-etsy .trend-labels');
+  if (trendEl) trendEl.outerHTML = `<div class="trend-chart">${trendBars}</div>`;
+  if (labelEl) labelEl.outerHTML = `<div class="trend-labels">${trendLabels}</div>`;
+
+  // Hide loading, show data
+  document.getElementById('etsy-loading').style.display = 'none';
+  document.getElementById('etsy-data').style.display = 'block';
+  document.getElementById('connect-banner').style.display = 'none';
+  setConnected(true, 'CSV loaded ✓');
+
+  // Save FULL data to localStorage so nothing needs re-uploading
+  const saveData = {
+    totalRevenue, totalOrders, aov,
+    monthly,
+    topListings: sorted.map(([name, qty]) => [name, qty, itemRevenue[name] || 0]),
+    savedAt: new Date().toISOString()
+  };
+  try {
+    localStorage.setItem('etsy_full_data', JSON.stringify(saveData));
+    localStorage.removeItem('csv_summary'); // clear old format
   } catch(e) {
-    loadEl.innerHTML = `<span style="color:var(--red)">❌ Could not load Etsy data: ${e.message}. Your token may have expired — click "Connect APIs" to re-enter it.</span>`;
+    // localStorage full — save summary only
+    localStorage.setItem('csv_summary', JSON.stringify({totalRevenue, totalOrders, aov}));
   }
 }
 
