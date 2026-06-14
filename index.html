@@ -236,10 +236,12 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--tx);min-heigh
 <div class="page active" id="page-analytics">
 
   <div class="connect-banner" id="connect-banner">
-    <p><strong>Upload your Etsy CSVs</strong> to load your shop data. Export from Etsy → Shop Manager → Orders → Download CSV.</p>
-    <div class="token-form">
-      <label class="token-btn" style="cursor:pointer;">
-        📂 Upload Orders CSV
+    <p><strong>Connect Etsy</strong> — paste your access token to load live data, or upload a CSV instead.</p>
+    <div class="token-form" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+      <input type="password" class="token-input" id="etsy-token-input" placeholder="Paste Etsy access token..."/>
+      <button class="token-btn" onclick="connectEtsy()">Connect live →</button>
+      <label class="token-btn" style="cursor:pointer;background:#333;color:#f0f0f0;">
+        📂 CSV instead
         <input type="file" id="csv-upload" accept=".csv" multiple style="display:none" onchange="handleCSV(this)"/>
       </label>
     </div>
@@ -496,15 +498,24 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--tx);min-heigh
 
 <script>
 // ── CONFIG ──────────────────────────────────────
+const PROXY = 'https://prells-prints-dashboard.vercel.app/api/etsy';
 let ideaHist = [], pubImgData = null;
+let etsyToken = localStorage.getItem('etsy_token') || '';
 
 // ── INIT ─────────────────────────────────────────
 window.onload = function() {
-  // Restore Etsy data
-  const saved = localStorage.getItem('etsy_full_data');
-  if (saved) {
-    try { restoreFromSaved(JSON.parse(saved)); }
-    catch(e) { console.log('Could not restore Etsy data:', e); }
+  // Try live Etsy connection if token saved
+  etsyToken = localStorage.getItem('etsy_token') || '';
+  if (etsyToken) {
+    document.getElementById('connect-banner').style.display = 'none';
+    loadLiveEtsyData();
+  } else {
+    // Fall back to CSV data
+    const saved = localStorage.getItem('etsy_full_data');
+    if (saved) {
+      try { restoreFromSaved(JSON.parse(saved)); }
+      catch(e) { console.log('Could not restore CSV data:', e); }
+    }
   }
   // Restore Pinterest data
   restorePinData();
@@ -603,14 +614,116 @@ function showAV(id, btn) {
   }
 }
 
-// ── CSV PARSING ──────────────────────────────────
+// ── CONNECT ──────────────────────────────────────
 function showConnectForm() {
   document.getElementById('connect-banner').style.display = 'flex';
 }
 
 function setConnected(live, label) {
   document.getElementById('status-dot').className = 'status-dot' + (live ? ' live' : '');
-  document.getElementById('status-txt').textContent = label || (live ? 'CSV loaded' : 'Not connected');
+  document.getElementById('status-txt').textContent = label || (live ? 'Connected' : 'Not connected');
+}
+
+async function connectEtsy() {
+  const tok = document.getElementById('etsy-token-input').value.trim();
+  if (!tok) { alert('Please paste your Etsy access token.'); return; }
+  etsyToken = tok;
+  localStorage.setItem('etsy_token', tok);
+  document.getElementById('connect-banner').style.display = 'none';
+  setConnected(true, 'Connecting...');
+  await loadLiveEtsyData();
+}
+
+async function proxyGet(path, params='') {
+  const url = `${PROXY}?path=${encodeURIComponent(path)}${params ? '&' + params : ''}`;
+  const r = await fetch(url, { headers: { 'Authorization': `Bearer ${etsyToken}` } });
+  if (!r.ok) throw new Error(`API error ${r.status}`);
+  return r.json();
+}
+
+async function loadLiveEtsyData() {
+  const loadEl = document.getElementById('etsy-loading');
+  const dataEl = document.getElementById('etsy-data');
+  loadEl.style.display = 'flex';
+  loadEl.innerHTML = '<div class="spinner"></div> Loading live Etsy data...';
+  dataEl.style.display = 'none';
+
+  try {
+    const user = await proxyGet('users/me');
+    const userId = user.user_id;
+    const shop = await proxyGet(`users/${userId}/shops`);
+    const shopId = shop.shop_id;
+
+    // Get revenue from receipts
+    let liveRevenue = 0, liveOrders = 0;
+    try {
+      const receipts = await proxyGet(`shops/${shopId}/receipts`, 'limit=100&was_paid=true');
+      if (receipts.results) {
+        liveOrders = receipts.count;
+        liveRevenue = receipts.results.reduce((s, r) =>
+          s + (r.grandtotal?.amount || 0) / (r.grandtotal?.divisor || 100), 0);
+      }
+    } catch(e) { console.log('Receipts unavailable:', e); }
+
+    // Get active listings
+    const listings = await proxyGet(`shops/${shopId}/listings/active`, 'limit=10&sort_on=views&sort_order=desc');
+
+    // Update summary
+    const revDisplay = liveRevenue > 0 ? '$' + Math.round(liveRevenue).toLocaleString() : '$' + Math.round(shop.transaction_sold_count * 8.31).toLocaleString();
+    document.getElementById('s-rev').textContent = revDisplay;
+    document.getElementById('s-orders').textContent = shop.transaction_sold_count.toLocaleString() + ' total orders';
+
+    // Update stats strip
+    document.getElementById('etsy-stats').innerHTML = `
+      <div class="stat-cell accent">
+        <div class="sc-label">Shop</div>
+        <div class="sc-val" style="font-size:15px">${shop.shop_name}</div>
+        <div class="sc-sub up">${shop.transaction_sold_count.toLocaleString()} total sales · Live</div>
+      </div>
+      <div class="stat-cell">
+        <div class="sc-label">Revenue (last 100)</div>
+        <div class="sc-val">${liveRevenue > 0 ? '$' + Math.round(liveRevenue).toLocaleString() : '—'}</div>
+        <div class="sc-sub up">${liveOrders > 0 ? liveOrders + ' recent orders' : 'See receipts'}</div>
+      </div>
+      <div class="stat-cell">
+        <div class="sc-label">Active Listings</div>
+        <div class="sc-val">${shop.listing_active_count}</div>
+        <div class="sc-sub">Currently live on Etsy</div>
+      </div>
+      <div class="stat-cell">
+        <div class="sc-label">Avg Order Value</div>
+        <div class="sc-val">${liveRevenue > 0 && liveOrders > 0 ? '$' + (liveRevenue/Math.min(liveOrders,100)).toFixed(2) : '$8.31'}</div>
+        <div class="sc-sub">Per transaction</div>
+      </div>`;
+
+    // Update listings table
+    if (listings.results?.length) {
+      document.getElementById('etsy-listings').innerHTML = listings.results.map((l, i) => `
+        <tr>
+          <td style="color:var(--mu)">${i+1}</td>
+          <td><a href="${l.url}" target="_blank" style="color:var(--etsy);text-decoration:none">${l.title.slice(0,55)}${l.title.length>55?'...':''}</a></td>
+          <td>$${(l.price.amount/l.price.divisor).toFixed(2)}</td>
+          <td>${l.quantity}</td>
+          <td><span class="badge b-green">Active</span></td>
+        </tr>`).join('');
+    }
+
+    loadEl.style.display = 'none';
+    dataEl.style.display = 'block';
+    setConnected(true, `${shop.shop_name} · Live`);
+
+    // Cache the token
+    localStorage.setItem('etsy_token', etsyToken);
+
+  } catch(e) {
+    loadEl.innerHTML = `<span style="color:var(--red)">❌ ${e.message} — your token may have expired.</span>`;
+    setConnected(false);
+  }
+}
+
+// ── CSV PARSING ──────────────────────────────────
+function showConnectForm_csv() {
+  document.getElementById('connect-banner').style.display = 'flex';
 }
 
 function handleCSV(input) {
