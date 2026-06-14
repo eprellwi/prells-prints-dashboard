@@ -4,10 +4,9 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const ETSY_KEY = process.env.ETSY_API_KEY;
+  const ETSY_KEY = '60megc96vue75h2ycvdkihb7';
   const token = req.headers.authorization?.replace('Bearer ', '');
   if (!token) return res.status(401).json({ error: 'Missing access token' });
-  if (!ETSY_KEY) return res.status(500).json({ error: 'API key not configured' });
 
   const { path, ...rest } = req.query;
   if (!path) return res.status(400).json({ error: 'Missing path' });
