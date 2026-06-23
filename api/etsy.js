@@ -16,27 +16,22 @@ export default async function handler(req, res) {
   const qs = new URLSearchParams(rest).toString();
   const etsyUrl = `https://openapi.etsy.com/v3/application/${path}${qs ? '?' + qs : ''}`;
 
-  // Try with keystring first
-  try {
-    const response = await fetch(etsyUrl, {
-      method: req.method,
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'x-api-key': KEYSTRING,
-        'Accept': 'application/json'
-      }
-    });
+  // Try all header combinations
+  const attempts = [
+    { 'Authorization': `Bearer ${token}`, 'x-api-key': KEYSTRING },
+    { 'Authorization': `Bearer ${token}`, 'x-api-key': SHARED_SECRET },
+    { 'Authorization': `Bearer ${token}`, 'x-api-key': `${KEYSTRING}.${SHARED_SECRET}` },
+  ];
+
+  let lastResult = null;
+  for (const headers of attempts) {
+    const response = await fetch(etsyUrl, { method: req.method, headers: { ...headers, 'Accept': 'application/json' } });
     const data = await response.json();
-    // Return debug info so we can see what's happening
-    return res.status(response.status).json({
-      ...data,
-      _debug: {
-        url: etsyUrl,
-        status: response.status,
-        keyUsed: KEYSTRING.slice(0,8) + '...'
-      }
-    });
-  } catch (error) {
-    return res.status(500).json({ error: error.message });
+    lastResult = { status: response.status, data, keyUsed: headers['x-api-key'].slice(0,10) };
+    if (response.status === 200) {
+      return res.status(200).json(data);
+    }
   }
+
+  return res.status(403).json({ error: 'All attempts failed', lastResult });
 }
