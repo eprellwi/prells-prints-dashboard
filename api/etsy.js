@@ -1,12 +1,10 @@
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-etsy-key');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   const token = req.headers.authorization?.replace('Bearer ', '');
-  const apiKey = req.headers['x-etsy-key'] || '60megc96vue75h2ycvdkihb7';
-  
   if (!token) return res.status(401).json({ error: 'Missing access token' });
 
   const { path, ...rest } = req.query;
@@ -20,7 +18,7 @@ export default async function handler(req, res) {
       method: req.method,
       headers: {
         'Authorization': `Bearer ${token}`,
-        'x-api-key': apiKey,
+        'x-api-key': '2grqd3qeoz',
         'Accept': 'application/json'
       }
     });
