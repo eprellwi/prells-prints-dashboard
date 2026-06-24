@@ -1,6 +1,7 @@
 {
   "rewrites": [
     { "source": "/privacy", "destination": "/privacy.html" },
-    { "source": "/prells-prints/privacy", "destination": "/privacy.html" }
+    { "source": "/prells-prints/privacy", "destination": "/privacy.html" },
+    { "source": "/prellsprints/privacy", "destination": "/privacy.html" }
   ]
 }
