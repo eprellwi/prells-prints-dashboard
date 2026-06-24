@@ -83,6 +83,17 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--tx);min-heigh
 /* ── SECTION HEADING ── */
 .sh{font-size:10px;font-weight:600;color:var(--mu);text-transform:uppercase;letter-spacing:.8px;margin:20px 0 10px;font-family:var(--font-mono);}
 
+/* ── DATE FILTER ── */
+.date-filter-bar{display:flex;align-items:center;gap:8px;margin-bottom:20px;flex-wrap:wrap;}
+.df-btn{padding:5px 14px;font-size:11px;font-weight:600;border-radius:20px;cursor:pointer;border:1px solid var(--b2);color:var(--mu);background:none;font-family:var(--font-body);transition:all .15s;text-transform:uppercase;letter-spacing:.4px;}
+.df-btn:hover{color:var(--tx);border-color:var(--m2);}
+.df-btn.active{background:var(--etsy);border-color:var(--etsy);color:#000;}
+.df-custom{display:flex;align-items:center;gap:6px;}
+.df-date{background:var(--bg4);border:1px solid var(--b2);border-radius:6px;padding:4px 8px;font-size:11px;color:var(--tx);font-family:var(--font-mono);cursor:pointer;}
+.df-date::-webkit-calendar-picker-indicator{filter:invert(1);opacity:.5;cursor:pointer;}
+.df-apply{background:var(--etsy);color:#000;border:none;border-radius:6px;padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--font-body);}
+.df-label{font-size:11px;color:var(--mu);font-family:var(--font-mono);margin-left:4px;}
+
 /* ── BAR CHART ── */
 .bar-chart{display:flex;flex-direction:column;gap:8px;margin-bottom:20px;}
 .bar-row{display:flex;align-items:center;gap:10px;}
@@ -236,14 +247,10 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--tx);min-heigh
 <div class="page active" id="page-analytics">
 
   <div class="connect-banner" id="connect-banner">
-    <p><strong>Connect Etsy</strong> — paste your access token to load live data, or upload a CSV instead.</p>
+    <p><strong>Connect Etsy</strong> — paste your access token to load live shop data.</p>
     <div class="token-form" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
       <input type="password" class="token-input" id="etsy-token-input" placeholder="Paste Etsy access token..."/>
       <button class="token-btn" onclick="connectEtsy()">Connect live →</button>
-      <label class="token-btn" style="cursor:pointer;background:#333;color:#f0f0f0;">
-        📂 CSV instead
-        <input type="file" id="csv-upload" accept=".csv" multiple style="display:none" onchange="handleCSV(this)"/>
-      </label>
     </div>
   </div>
 
@@ -286,28 +293,25 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--tx);min-heigh
 
   <!-- ETSY -->
   <div class="pview" id="av-etsy">
-    <div id="etsy-loading" class="loading"><div class="spinner"></div>Upload your Etsy CSV to see data — click "Connect APIs" above</div>
+    <div id="etsy-loading" class="loading"><div class="spinner"></div>Paste your Etsy access token above to load live data.</div>
     <div id="etsy-data" style="display:none">
+      <div class="date-filter-bar">
+        <button class="df-btn active" onclick="setFilter('month',this)">This Month</button>
+        <button class="df-btn" onclick="setFilter('year',this)">This Year</button>
+        <button class="df-btn" onclick="setFilter('custom',this)">Custom</button>
+        <div class="df-custom" id="df-custom" style="display:none">
+          <input type="date" class="df-date" id="df-from"/>
+          <span style="color:var(--mu);font-size:12px">→</span>
+          <input type="date" class="df-date" id="df-to"/>
+          <button class="df-apply" onclick="applyCustomFilter()">Apply</button>
+        </div>
+        <span class="df-label" id="df-label"></span>
+      </div>
       <div class="sh">Shop overview</div>
       <div class="stat-strip" id="etsy-stats"></div>
       <div class="sh">Top listings</div>
       <div class="table-wrap"><table class="data-table"><thead><tr><th>#</th><th>Listing</th><th>Price</th><th>Quantity</th><th>State</th></tr></thead><tbody id="etsy-listings"></tbody></table></div>
-      <div class="sh" style="margin-top:16px">Historical sales (from your CSV data)</div>
-      <div class="stat-strip">
-        <div class="stat-cell accent"><div class="sc-label">2025 Revenue</div><div class="sc-val">$7,415</div><div class="sc-sub up">914 orders</div></div>
-        <div class="stat-cell"><div class="sc-label">2026 YTD</div><div class="sc-val">$4,542</div><div class="sc-sub up">524 orders</div></div>
-        <div class="stat-cell"><div class="sc-label">All-time #1</div><div class="sc-val">229 units</div><div class="sc-sub">Party Animal</div></div>
-        <div class="stat-cell"><div class="sc-label">Avg order</div><div class="sc-val">$8.31</div><div class="sc-sub">All digital</div></div>
-      </div>
-      <div class="sh">2026 monthly revenue</div>
-      <div class="trend-chart">
-        <div class="tc-bar" style="height:94%;background:var(--ol)"><span class="tip">Jan: $1,420</span></div>
-        <div class="tc-bar" style="height:48%;background:var(--ol)"><span class="tip">Feb: $729</span></div>
-        <div class="tc-bar" style="height:63%;background:var(--ol)"><span class="tip">Mar: $949</span></div>
-        <div class="tc-bar" style="height:59%;background:var(--ol)"><span class="tip">Apr: $894</span></div>
-        <div class="tc-bar" style="height:37%;background:var(--ol)"><span class="tip">May*: $551</span></div>
-      </div>
-      <div class="trend-labels"><div class="tc-lbl">Jan</div><div class="tc-lbl">Feb</div><div class="tc-lbl">Mar</div><div class="tc-lbl">Apr</div><div class="tc-lbl">May*</div></div>
+
     </div>
   </div>
 
@@ -501,89 +505,52 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--tx);min-heigh
 const PROXY = 'https://prells-prints-dashboard.vercel.app/api/etsy';
 let ideaHist = [], pubImgData = null;
 let etsyToken = localStorage.getItem('etsy_token') || '';
+let activeFilter = 'month';
+let customFrom = null, customTo = null;
+
+// ── DATE FILTER ──────────────────────────────────
+function setFilter(type, btn) {
+  activeFilter = type;
+  document.querySelectorAll('.df-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('df-custom').style.display = type === 'custom' ? 'flex' : 'none';
+  if (type !== 'custom') loadLiveEtsyData();
+}
+
+function applyCustomFilter() {
+  customFrom = document.getElementById('df-from').value;
+  customTo = document.getElementById('df-to').value;
+  if (!customFrom || !customTo) { alert('Please select both a start and end date.'); return; }
+  loadLiveEtsyData();
+}
+
+function getDateRange() {
+  const now = new Date();
+  if (activeFilter === 'month') {
+    const from = new Date(now.getFullYear(), now.getMonth(), 1);
+    const to = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return { from, to, label: now.toLocaleDateString('en-US', {month:'long', year:'numeric'}) };
+  } else if (activeFilter === 'year') {
+    const from = new Date(now.getFullYear(), 0, 1);
+    const to = new Date(now.getFullYear(), 11, 31);
+    return { from, to, label: `Jan – Dec ${now.getFullYear()}` };
+  } else {
+    const from = customFrom ? new Date(customFrom) : new Date(now.getFullYear(), now.getMonth(), 1);
+    const to = customTo ? new Date(customTo) : now;
+    return { from, to, label: `${from.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – ${to.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}` };
+  }
+}
 
 // ── INIT ─────────────────────────────────────────
 window.onload = function() {
-  // Try live Etsy connection if token saved
   etsyToken = localStorage.getItem('etsy_token') || '';
   if (etsyToken) {
     document.getElementById('connect-banner').style.display = 'none';
     loadLiveEtsyData();
-  } else {
-    // Fall back to CSV data
-    const saved = localStorage.getItem('etsy_full_data');
-    if (saved) {
-      try { restoreFromSaved(JSON.parse(saved)); }
-      catch(e) { console.log('Could not restore CSV data:', e); }
-    }
   }
-  // Restore Pinterest data
   restorePinData();
 };
 
-function restoreFromSaved(d) {
-  const { totalRevenue, totalOrders, aov, monthly, topListings, savedAt } = d;
-  const saveDate = savedAt ? new Date(savedAt).toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'}) : 'previously';
-
-  // Summary stats
-  document.getElementById('s-rev').textContent = '$' + Math.round(totalRevenue).toLocaleString();
-  document.getElementById('s-orders').textContent = totalOrders.toLocaleString() + ' orders';
-
-  // Etsy stats strip
-  document.getElementById('etsy-stats').innerHTML = `
-    <div class="stat-cell accent">
-      <div class="sc-label">Total Revenue</div>
-      <div class="sc-val">$${Math.round(totalRevenue).toLocaleString()}</div>
-      <div class="sc-sub up">${totalOrders.toLocaleString()} orders</div>
-    </div>
-    <div class="stat-cell">
-      <div class="sc-label">Avg Order Value</div>
-      <div class="sc-val">$${aov.toFixed(2)}</div>
-      <div class="sc-sub">Per transaction</div>
-    </div>
-    <div class="stat-cell">
-      <div class="sc-label">Unique Items</div>
-      <div class="sc-val">${topListings.length}+</div>
-      <div class="sc-sub">Distinct listings sold</div>
-    </div>
-    <div class="stat-cell">
-      <div class="sc-label">Last Updated</div>
-      <div class="sc-val" style="font-size:13px">${saveDate}</div>
-      <div class="sc-sub">Upload CSV to refresh</div>
-    </div>`;
-
-  // Top listings table
-  if (topListings && topListings.length) {
-    document.getElementById('etsy-listings').innerHTML = topListings.map(([name, qty, rev], i) => `
-      <tr>
-        <td style="color:var(--mu)">${i+1}</td>
-        <td>${name.slice(0,55)}${name.length>55?'...':''}</td>
-        <td>$${(rev/qty).toFixed(2)}</td>
-        <td>${qty}</td>
-        <td><span class="badge b-green">$${Math.round(rev).toLocaleString()}</span></td>
-      </tr>`).join('');
-  }
-
-  // Monthly trend
-  if (monthly) {
-    const monthKeys = Object.keys(monthly).sort();
-    const maxRev = Math.max(...Object.values(monthly));
-    const trendBars = monthKeys.map(m => {
-      const h = Math.max(3, Math.round((monthly[m]/maxRev)*100));
-      return `<div class="tc-bar" style="height:${h}%;background:var(--ol)"><span class="tip">${m}: $${Math.round(monthly[m]).toLocaleString()}</span></div>`;
-    }).join('');
-    const trendLabels = monthKeys.map(m => `<div class="tc-lbl">${m.slice(5,7)}/${m.slice(2,4)}</div>`).join('');
-    const trendEl = document.querySelector('#av-etsy .trend-chart');
-    const labelEl = document.querySelector('#av-etsy .trend-labels');
-    if (trendEl) trendEl.outerHTML = `<div class="trend-chart">${trendBars}</div>`;
-    if (labelEl) labelEl.outerHTML = `<div class="trend-labels">${trendLabels}</div>`;
-  }
-
-  document.getElementById('etsy-loading').style.display = 'none';
-  document.getElementById('etsy-data').style.display = 'block';
-  document.getElementById('connect-banner').style.display = 'none';
-  setConnected(true, 'Data loaded · ' + saveDate);
-}
 
 // ── NAV ──────────────────────────────────────────
 function showPage(id, btn) {
@@ -599,19 +566,6 @@ function showAV(id, btn) {
   document.getElementById('av-' + id).classList.add('show');
   const cls = {summary:'aa',etsy:'ae',pinterest:'ap',meta:'am'};
   btn.classList.add(cls[id]);
-  // If clicking Etsy tab, make sure saved data is shown
-  if (id === 'etsy') {
-    const saved = localStorage.getItem('etsy_full_data');
-    if (saved) {
-      try {
-        const d = JSON.parse(saved);
-        if (document.getElementById('etsy-data').style.display === 'none' || 
-            document.getElementById('etsy-data').style.display === '') {
-          restoreFromSaved(d);
-        }
-      } catch(e) {}
-    }
-  }
 }
 
 // ── CONNECT ──────────────────────────────────────
@@ -650,17 +604,21 @@ async function loadLiveEtsyData() {
   dataEl.style.display = 'none';
 
   try {
+    const { from, to, label } = getDateRange();
+    const minCreated = Math.floor(from.getTime() / 1000);
+    const maxCreated = Math.floor(to.getTime() / 1000);
+
     const user = await proxyGet('users/me');
     const userId = user.user_id;
     const shop = await proxyGet(`users/${userId}/shops`);
     const shopId = shop.shop_id;
 
-    // Get revenue from receipts
+    // Get receipts filtered by date range
     let liveRevenue = 0, liveOrders = 0;
     try {
-      const receipts = await proxyGet(`shops/${shopId}/receipts`, 'limit=100&was_paid=true');
+      const receipts = await proxyGet(`shops/${shopId}/receipts`, `limit=100&was_paid=true&min_created=${minCreated}&max_created=${maxCreated}`);
       if (receipts.results) {
-        liveOrders = receipts.count;
+        liveOrders = receipts.results.length;
         liveRevenue = receipts.results.reduce((s, r) =>
           s + (r.grandtotal?.amount || 0) / (r.grandtotal?.divisor || 100), 0);
       }
@@ -669,22 +627,27 @@ async function loadLiveEtsyData() {
     // Get active listings
     const listings = await proxyGet(`shops/${shopId}/listings/active`, 'limit=10&sort_on=created&sort_order=desc');
 
+    // Update filter label
+    const labelEl = document.getElementById('df-label');
+    if (labelEl) labelEl.textContent = label;
+
     // Update summary
-    const revDisplay = liveRevenue > 0 ? '$' + Math.round(liveRevenue).toLocaleString() : '$' + Math.round(shop.transaction_sold_count * 8.31).toLocaleString();
+    const revDisplay = liveRevenue > 0 ? '$' + Math.round(liveRevenue).toLocaleString() : '$0';
     document.getElementById('s-rev').textContent = revDisplay;
-    document.getElementById('s-orders').textContent = shop.transaction_sold_count.toLocaleString() + ' total orders';
+    document.getElementById('s-orders').textContent = liveOrders + ' orders · ' + label;
 
     // Update stats strip
+    const aov = liveOrders > 0 ? (liveRevenue / liveOrders).toFixed(2) : '—';
     document.getElementById('etsy-stats').innerHTML = `
       <div class="stat-cell accent">
-        <div class="sc-label">Shop</div>
-        <div class="sc-val" style="font-size:15px">${shop.shop_name}</div>
-        <div class="sc-sub up">${shop.transaction_sold_count.toLocaleString()} total sales · Live</div>
+        <div class="sc-label">Revenue</div>
+        <div class="sc-val">${liveRevenue > 0 ? '$' + Math.round(liveRevenue).toLocaleString() : '—'}</div>
+        <div class="sc-sub up">${label}</div>
       </div>
       <div class="stat-cell">
-        <div class="sc-label">Revenue (last 100)</div>
-        <div class="sc-val">${liveRevenue > 0 ? '$' + Math.round(liveRevenue).toLocaleString() : '—'}</div>
-        <div class="sc-sub up">${liveOrders > 0 ? liveOrders + ' recent orders' : 'See receipts'}</div>
+        <div class="sc-label">Orders</div>
+        <div class="sc-val">${liveOrders}</div>
+        <div class="sc-sub up">${label}</div>
       </div>
       <div class="stat-cell">
         <div class="sc-label">Active Listings</div>
@@ -693,7 +656,7 @@ async function loadLiveEtsyData() {
       </div>
       <div class="stat-cell">
         <div class="sc-label">Avg Order Value</div>
-        <div class="sc-val">${liveRevenue > 0 && liveOrders > 0 ? '$' + (liveRevenue/Math.min(liveOrders,100)).toFixed(2) : '$8.31'}</div>
+        <div class="sc-val">${aov !== '—' ? '$' + aov : '—'}</div>
         <div class="sc-sub">Per transaction</div>
       </div>`;
 
@@ -712,184 +675,12 @@ async function loadLiveEtsyData() {
     loadEl.style.display = 'none';
     dataEl.style.display = 'block';
     setConnected(true, `${shop.shop_name} · Live`);
-
-    // Cache the token
     localStorage.setItem('etsy_token', etsyToken);
 
   } catch(e) {
     loadEl.innerHTML = `<span style="color:var(--red)">❌ ${e.message} — your token may have expired.</span>`;
     setConnected(false);
   }
-}
-
-// ── CSV PARSING ──────────────────────────────────
-function showConnectForm_csv() {
-  document.getElementById('connect-banner').style.display = 'flex';
-}
-
-function handleCSV(input) {
-  const files = Array.from(input.files);
-  if (!files.length) return;
-  let allRows = [];
-  let filesRead = 0;
-  files.forEach(file => {
-    const reader = new FileReader();
-    reader.onload = e => {
-      const rows = parseCSV(e.target.result);
-      allRows = allRows.concat(rows);
-      filesRead++;
-      if (filesRead === files.length) processCSVData(allRows);
-    };
-    reader.readAsText(file);
-  });
-}
-
-function parseCSV(text) {
-  // Robust CSV parser that handles quoted fields with commas inside
-  function splitCSVLine(line) {
-    const result = [];
-    let cur = '', inQuote = false;
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i];
-      if (ch === '"') {
-        inQuote = !inQuote;
-      } else if (ch === ',' && !inQuote) {
-        result.push(cur.trim());
-        cur = '';
-      } else {
-        cur += ch;
-      }
-    }
-    result.push(cur.trim());
-    return result;
-  }
-
-  const lines = text.split('\n');
-  // Find header row
-  let headerIdx = 0;
-  for (let i = 0; i < Math.min(20, lines.length); i++) {
-    if (lines[i].includes('Sale Date') || lines[i].includes('Item Name') || lines[i].includes('Order ID')) {
-      headerIdx = i; break;
-    }
-  }
-  const headers = splitCSVLine(lines[headerIdx]);
-  const rows = [];
-  for (let i = headerIdx + 1; i < lines.length; i++) {
-    if (!lines[i].trim()) continue;
-    const vals = splitCSVLine(lines[i]);
-    const row = {};
-    headers.forEach((h, idx) => { row[h] = (vals[idx] || '').trim(); });
-    if (row['Sale Date'] || row['Order ID']) rows.push(row);
-  }
-  return rows;
-}
-
-function processCSVData(rows) {
-  if (!rows.length) { alert('Could not parse CSV. Make sure you uploaded an Etsy Orders CSV.'); return; }
-
-  // Load existing saved orders (keyed by Order ID to prevent duplicates)
-  let existingOrders = {};
-  try {
-    const saved = localStorage.getItem('etsy_orders');
-    if (saved) existingOrders = JSON.parse(saved);
-  } catch(e) {}
-
-  // Merge new rows, deduplicating by Order ID
-  let newCount = 0, skipCount = 0;
-  rows.forEach(r => {
-    const orderId = r['Order ID'] || r['Transaction ID'] || (r['Sale Date'] + '_' + (r['Item Name'] || ''));
-    if (!orderId) return;
-    if (existingOrders[orderId]) { skipCount++; }
-    else { existingOrders[orderId] = r; newCount++; }
-  });
-
-  // Save merged orders
-  try { localStorage.setItem('etsy_orders', JSON.stringify(existingOrders)); }
-  catch(e) { alert('Storage full — try clearing old data first.'); return; }
-
-  // Compute stats from ALL saved orders
-  let totalRevenue = 0;
-  const monthly = {}, itemCounts = {}, itemRevenue = {};
-
-  Object.values(existingOrders).forEach(r => {
-    const amt = parseFloat((r['Item Total'] || r['Order Total'] || r['Sale Amount'] || '0').replace(/[$,]/g,'')) || 0;
-    totalRevenue += amt;
-    const date = r['Sale Date'] || r['Date'] || '';
-    if (date) {
-      const parts = date.split('/');
-      const monthKey = parts.length >= 2 ? (parts[2]?.slice(-4) || '20??') + '-' + parts[0]?.padStart(2,'0') : date.slice(0,7);
-      monthly[monthKey] = (monthly[monthKey] || 0) + amt;
-    }
-    const name = r['Item Name'] || r['Title'] || 'Unknown';
-    const qty = parseInt(r['Quantity'] || '1') || 1;
-    itemCounts[name] = (itemCounts[name] || 0) + qty;
-    itemRevenue[name] = (itemRevenue[name] || 0) + amt;
-  });
-
-  const totalOrders = Object.keys(existingOrders).length;
-  const aov = totalOrders > 0 ? totalRevenue / totalOrders : 0;
-  const sorted = Object.entries(itemCounts).sort((a,b) => b[1]-a[1]).slice(0,10);
-
-  // Update UI
-  document.getElementById('s-rev').textContent = '$' + Math.round(totalRevenue).toLocaleString();
-  document.getElementById('s-orders').textContent = totalOrders.toLocaleString() + ' orders total';
-
-  document.getElementById('etsy-stats').innerHTML = `
-    <div class="stat-cell accent">
-      <div class="sc-label">Total Revenue</div>
-      <div class="sc-val">$${Math.round(totalRevenue).toLocaleString()}</div>
-      <div class="sc-sub up">${totalOrders.toLocaleString()} orders</div>
-    </div>
-    <div class="stat-cell">
-      <div class="sc-label">Avg Order Value</div>
-      <div class="sc-val">$${aov.toFixed(2)}</div>
-      <div class="sc-sub">Per transaction</div>
-    </div>
-    <div class="stat-cell">
-      <div class="sc-label">Unique Listings</div>
-      <div class="sc-val">${Object.keys(itemCounts).length}</div>
-      <div class="sc-sub">Distinct items sold</div>
-    </div>
-    <div class="stat-cell">
-      <div class="sc-label">Last Upload</div>
-      <div class="sc-val" style="font-size:13px">${new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</div>
-      <div class="sc-sub up">+${newCount} new · ${skipCount} skipped</div>
-    </div>`;
-
-  document.getElementById('etsy-listings').innerHTML = sorted.map(([name, qty], i) => `
-    <tr>
-      <td style="color:var(--mu)">${i+1}</td>
-      <td>${name.slice(0,55)}${name.length>55?'...':''}</td>
-      <td>$${((itemRevenue[name]||0)/qty).toFixed(2)}</td>
-      <td>${qty}</td>
-      <td><span class="badge b-green">$${Math.round(itemRevenue[name]||0).toLocaleString()}</span></td>
-    </tr>`).join('');
-
-  const monthKeys = Object.keys(monthly).sort();
-  const maxRev = Math.max(...Object.values(monthly));
-  const trendBars = monthKeys.map(m => {
-    const h = Math.max(3, Math.round((monthly[m]/maxRev)*100));
-    return `<div class="tc-bar" style="height:${h}%;background:var(--ol)"><span class="tip">${m}: $${Math.round(monthly[m]).toLocaleString()}</span></div>`;
-  }).join('');
-  const trendLabels = monthKeys.map(m => `<div class="tc-lbl">${m.slice(5,7)}/${m.slice(2,4)}</div>`).join('');
-  const trendEl = document.querySelector('#av-etsy .trend-chart');
-  const labelEl = document.querySelector('#av-etsy .trend-labels');
-  if (trendEl) trendEl.outerHTML = `<div class="trend-chart">${trendBars}</div>`;
-  if (labelEl) labelEl.outerHTML = `<div class="trend-labels">${trendLabels}</div>`;
-
-  document.getElementById('etsy-loading').style.display = 'none';
-  document.getElementById('etsy-data').style.display = 'block';
-  document.getElementById('connect-banner').style.display = 'none';
-  setConnected(true, `Data loaded · +${newCount} new orders`);
-
-  // Save computed summary for fast restore
-  try {
-    localStorage.setItem('etsy_full_data', JSON.stringify({
-      totalRevenue, totalOrders, aov, monthly,
-      topListings: sorted.map(([name, qty]) => [name, qty, itemRevenue[name] || 0]),
-      savedAt: new Date().toISOString()
-    }));
-  } catch(e) {}
 }
 
 // ── PUBLISHER ────────────────────────────────────
