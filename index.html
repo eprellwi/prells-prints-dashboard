@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Prell's Prints Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -14,7 +14,7 @@
   --bg:#0a0a0a;--bg2:#0f0f0f;--bg3:#161616;--bg4:#1c1c1c;
   --b:#252525;--b2:#2e2e2e;
   --tx:#f0f0f0;--mu:#555;--m2:#888;
-  --font-head:'Syne',sans-serif;
+  --font-head:'DM Sans',sans-serif;
   --font-body:'DM Sans',sans-serif;
   --font-mono:'DM Mono',monospace;
 }
@@ -56,7 +56,7 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--tx);min-heigh
 .token-btn{background:var(--etsy);color:#000;border:none;border-radius:6px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font-body);white-space:nowrap;}
 
 /* ── PAGE HEADER ── */
-.page-title{font-family:var(--font-head);font-size:24px;font-weight:800;color:var(--tx);margin-bottom:4px;letter-spacing:-.5px;}
+.page-title{font-family:var(--font-head);font-size:24px;font-weight:800;color:var(--tx);margin-bottom:4px;letter-spacing:-.3px;}
 .page-sub{font-size:13px;color:var(--mu);margin-bottom:24px;}
 
 /* ── PLATFORM TABS ── */
@@ -82,6 +82,18 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--tx);min-heigh
 
 /* ── SECTION HEADING ── */
 .sh{font-size:10px;font-weight:600;color:var(--mu);text-transform:uppercase;letter-spacing:.8px;margin:20px 0 10px;font-family:var(--font-mono);}
+
+/* ── PINTEREST UPLOAD BAR ── */
+.pin-upload-bar{display:flex;align-items:center;justify-content:space-between;gap:16px;background:var(--bg3);border:1px solid var(--b);border-left:3px solid var(--pin);border-radius:8px;padding:14px 18px;flex-wrap:wrap;}
+.pin-upload-left{flex:1;}
+.pin-upload-status{font-size:13px;font-weight:600;color:var(--tx);margin-bottom:3px;}
+.pin-upload-sub{font-size:11px;color:var(--mu);}
+.pin-upload-right{display:flex;gap:8px;align-items:center;flex-shrink:0;}
+.pin-link-btn{font-size:11px;font-weight:600;color:var(--pin);text-decoration:none;border:1px solid var(--pin);border-radius:6px;padding:6px 12px;white-space:nowrap;transition:background .15s;}
+.pin-link-btn:hover{background:rgba(230,0,35,.1);}
+.pin-upload-btn{background:var(--pin);color:#fff;border:none;border-radius:6px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font-body);white-space:nowrap;}
+.pin-upload-btn.drag-over{background:#ff4d6a;transform:scale(1.02);}
+.pin-stale-banner{background:#A3A12215;border:1px solid var(--ol);border-radius:6px;padding:10px 14px;font-size:12px;color:var(--ol);margin-top:10px;}
 
 /* ── FINANCIALS ── */
 .ptab.af{background:#7B1A4B;border-color:#7B1A4B;color:#fff;}
@@ -327,37 +339,42 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--tx);min-heigh
 
   <!-- PINTEREST -->
   <div class="pview" id="av-pinterest">
-    <div class="connect-banner" id="pin-connect-banner" style="margin-bottom:16px;">
-      <p><strong>Upload your Pinterest analytics CSV</strong> to load real data. Export from Pinterest → Analytics → Overview → Export.</p>
-      <div class="token-form">
-        <label class="token-btn" style="cursor:pointer;">
-          📂 Upload Pinterest CSV
+
+    <!-- Upload bar — always visible -->
+    <div class="pin-upload-bar" id="pin-upload-bar">
+      <div class="pin-upload-left">
+        <div class="pin-upload-status" id="pin-upload-status">No data yet — upload your first CSV to get started</div>
+        <div class="pin-upload-sub" id="pin-upload-sub">New uploads merge automatically — no duplicates, no full history needed</div>
+      </div>
+      <div class="pin-upload-right">
+        <a href="https://analytics.pinterest.com" target="_blank" class="pin-link-btn">Open Pinterest Analytics ↗</a>
+        <label class="token-btn pin-upload-btn" id="pin-drop-zone">
+          📂 Upload CSV
           <input type="file" id="pin-csv-upload" accept=".csv" style="display:none" onchange="handlePinCSV(this)"/>
         </label>
       </div>
     </div>
-    <div class="stat-strip" id="pin-stats">
-      <div class="stat-cell accent"><div class="sc-label">Total Impressions</div><div class="sc-val" id="pin-impr">18,032</div><div class="sc-sub up" id="pin-impr-sub">Nov 2025 – May 2026</div></div>
-      <div class="stat-cell"><div class="sc-label">Top Pin</div><div class="sc-val" id="pin-top">4,671</div><div class="sc-sub">Single pin record</div></div>
-      <div class="stat-cell"><div class="sc-label">Best Month</div><div class="sc-val" id="pin-best-month">Mar '26</div><div class="sc-sub up" id="pin-best-sub">7,599 impressions</div></div>
+
+    <!-- Stale data warning -->
+    <div class="pin-stale-banner" id="pin-stale-banner" style="display:none">
+      ⏰ Your Pinterest data is more than 7 days old. Drop a new CSV to refresh!
+    </div>
+
+    <div class="stat-strip" id="pin-stats" style="margin-top:16px">
+      <div class="stat-cell accent"><div class="sc-label">Total Impressions</div><div class="sc-val" id="pin-impr">—</div><div class="sc-sub up" id="pin-impr-sub">Upload CSV to load</div></div>
+      <div class="stat-cell"><div class="sc-label">Top Pin</div><div class="sc-val" id="pin-top">—</div><div class="sc-sub">Single pin record</div></div>
+      <div class="stat-cell"><div class="sc-label">Best Month</div><div class="sc-val" id="pin-best-month">—</div><div class="sc-sub up" id="pin-best-sub">—</div></div>
       <div class="stat-cell warn"><div class="sc-label">Paid Spend</div><div class="sc-val">$0</div><div class="sc-sub dn">Organic only</div></div>
     </div>
     <div class="sh">Monthly impressions</div>
     <div id="pin-trend-chart">
-      <div class="trend-chart">
-        <div class="tc-bar" style="height:1%;background:var(--bg4)"><span class="tip">Nov '25: 0</span></div>
-        <div class="tc-bar" style="height:1%;background:var(--bg4)"><span class="tip">Dec '25: 4</span></div>
-        <div class="tc-bar" style="height:21%;background:var(--red)"><span class="tip">Jan '26: 1,618</span></div>
-        <div class="tc-bar" style="height:21%;background:var(--red)"><span class="tip">Feb '26: 1,629</span></div>
-        <div class="tc-bar" style="height:100%;background:var(--red)"><span class="tip">Mar '26: 7,599</span></div>
-        <div class="tc-bar" style="height:55%;background:var(--red)"><span class="tip">Apr '26: 4,155</span></div>
-        <div class="tc-bar" style="height:40%;background:var(--red)"><span class="tip">May '26: 3,027*</span></div>
+      <div class="trend-chart" style="align-items:center;justify-content:center;">
+        <span style="color:var(--mu);font-size:12px">Upload a CSV to see your trend</span>
       </div>
-      <div class="trend-labels"><div class="tc-lbl">Nov</div><div class="tc-lbl">Dec</div><div class="tc-lbl">Jan</div><div class="tc-lbl">Feb</div><div class="tc-lbl">Mar</div><div class="tc-lbl">Apr</div><div class="tc-lbl">May*</div></div>
     </div>
     <div class="sh">Top boards by impressions</div>
     <div class="bar-chart" id="pin-boards"></div>
-    <div class="insight" id="pin-insight"><strong>Biggest gap:</strong> Western board has only 133 impressions but Wild Wild West is your #2 Etsy seller with 74 sales. Post 3–5 more pins to the Western board this week.</div>
+    <div class="insight" id="pin-insight" style="display:none"></div>
   </div>
 
   <!-- META -->
@@ -872,6 +889,20 @@ function addIdeaMsg(txt, role) { const el=document.getElementById('idea-msgs');c
 function addIdeaThink() { const el=document.getElementById('idea-msgs');const id='t'+Date.now();el.innerHTML+=`<div class="cmsg b" id="${id}"><div class="cav b">PP</div><div class="cbubble"><span style="display:inline-flex;align-items:center;gap:6px"><span class="spinner"></span>Thinking...</span></div></div>`;el.scrollTop=el.scrollHeight;return id; }
 
 // ── PINTEREST CSV ─────────────────────────────────
+// ── PINTEREST CSV ─────────────────────────────────
+function initPinDropZone() {
+  const zone = document.getElementById('pin-drop-zone');
+  if (!zone) return;
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('drag-over');
+    const file = e.dataTransfer?.files[0];
+    if (file) { const r = new FileReader(); r.onload = ev => parsePinCSV(ev.target.result); r.readAsText(file); }
+  });
+}
+
 function handlePinCSV(input) {
   if (!input.files || !input.files[0]) return;
   const reader = new FileReader();
@@ -881,10 +912,7 @@ function handlePinCSV(input) {
 
 function parsePinCSV(text) {
   const lines = text.split('\n');
-
-  // Parse daily impressions (lines after "Date,Impressions" header)
-  const monthly = {};
-  let totalImpressions = 0;
+  const newDaily = {};
   let dailyStart = -1;
   for (let i = 0; i < lines.length; i++) {
     if (lines[i].trim() === 'Date,Impressions') { dailyStart = i + 1; break; }
@@ -893,14 +921,17 @@ function parsePinCSV(text) {
     for (let i = dailyStart; i < lines.length; i++) {
       const parts = lines[i].trim().split(',');
       if (parts.length < 2 || !parts[0].match(/^\d{4}-/)) break;
-      const impr = parseInt(parts[1]) || 0;
-      const monthKey = parts[0].slice(0, 7); // YYYY-MM
-      monthly[monthKey] = (monthly[monthKey] || 0) + impr;
-      totalImpressions += impr;
+      newDaily[parts[0]] = parseInt(parts[1]) || 0;
     }
   }
 
-  // Parse top boards
+  let existingDaily = {};
+  try { const s = localStorage.getItem('pin_daily'); if (s) existingDaily = JSON.parse(s); } catch(e) {}
+  const newDates = Object.keys(newDaily).filter(d => !(d in existingDaily));
+  const skipDates = Object.keys(newDaily).filter(d => d in existingDaily);
+  const mergedDaily = { ...existingDaily, ...newDaily };
+  try { localStorage.setItem('pin_daily', JSON.stringify(mergedDaily)); } catch(e) {}
+
   let boardsStart = -1;
   for (let i = 0; i < lines.length; i++) {
     if (lines[i].includes('Pinterest Link,Impressions')) { boardsStart = i + 1; break; }
@@ -912,20 +943,12 @@ function parsePinCSV(text) {
       if (!line || line.includes('restricted')) break;
       const parts = line.split(',');
       if (parts[0].startsWith('http')) {
-        const url = parts[0];
-        const boardName = url.split('/').filter(Boolean).pop()
-          .replace(/-/g, ' ')
-          .replace(/\w/g, c => c.toUpperCase());
-        const impr = parseInt(parts[1]) || 0;
-        const eng = parseInt(parts[2]) || 0;
-        const clicks = parseInt(parts[3]) || 0;
-        const saves = parseInt(parts[5]) || 0;
-        boards.push({ name: boardName, impr, eng, clicks, saves, url });
+        const boardName = parts[0].split('/').filter(Boolean).pop().replace(/-/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+        boards.push({ name: boardName, impr: parseInt(parts[1])||0, url: parts[0] });
       }
     }
   }
 
-  // Parse top pins
   let pinsStart = -1;
   for (let i = 0; i < lines.length; i++) {
     if (lines[i].includes('Pinterest Link,Content Type')) { pinsStart = i + 1; break; }
@@ -935,36 +958,46 @@ function parsePinCSV(text) {
     for (let i = pinsStart; i < lines.length; i++) {
       const line = lines[i].trim();
       if (!line || line.includes('restricted')) break;
-      // Handle quoted fields
       const parts = line.match(/(".*?"|[^,]+)(?=,|$)/g) || line.split(',');
-      if (parts[0]?.startsWith('http')) {
-        pins.push({ url: parts[0], impr: parseInt(parts[parts.length-1]) || 0 });
-      }
+      if (parts[0]?.startsWith('http')) pins.push({ url: parts[0], impr: parseInt(parts[parts.length-1])||0 });
     }
   }
 
-  // Find date range
+  try { localStorage.setItem('pin_boards', JSON.stringify(boards)); } catch(e) {}
+  try { localStorage.setItem('pin_pins', JSON.stringify(pins.slice(0,10))); } catch(e) {}
+  try { localStorage.setItem('pin_updated', new Date().toISOString()); } catch(e) {}
+
+  renderPinData(mergedDaily, boards, pins);
+
+  const statusEl = document.getElementById('pin-upload-status');
+  const subEl = document.getElementById('pin-upload-sub');
+  if (statusEl) statusEl.textContent = `✅ Updated — +${newDates.length} new days added`;
+  if (subEl) subEl.textContent = `${skipDates.length} duplicate days skipped · ${Object.keys(mergedDaily).length} total days stored`;
+}
+
+function renderPinData(daily, boards, pins) {
+  const monthly = {};
+  let totalImpressions = 0;
+  Object.entries(daily).forEach(([date, impr]) => {
+    const monthKey = date.slice(0, 7);
+    monthly[monthKey] = (monthly[monthKey] || 0) + impr;
+    totalImpressions += impr;
+  });
+
   const monthKeys = Object.keys(monthly).sort();
-  const dateRange = monthKeys.length > 0
-    ? monthKeys[0] + ' – ' + monthKeys[monthKeys.length-1]
-    : 'Uploaded';
-
-  // Find best month
+  const dateRange = monthKeys.length > 0 ? `${monthKeys[0]} – ${monthKeys[monthKeys.length-1]}` : 'All time';
   const bestMonth = Object.entries(monthly).sort((a,b) => b[1]-a[1])[0];
-  const topPin = pins.sort((a,b) => b.impr-a.impr)[0];
+  const topPin = [...pins].sort((a,b) => b.impr-a.impr)[0];
 
-  // Update stat strip
   document.getElementById('pin-impr').textContent = totalImpressions.toLocaleString();
   document.getElementById('pin-impr-sub').textContent = dateRange;
   document.getElementById('pin-top').textContent = topPin ? topPin.impr.toLocaleString() : '—';
   if (bestMonth) {
     const [yr, mo] = bestMonth[0].split('-');
-    const monthName = new Date(yr, mo-1).toLocaleDateString('en-US',{month:'short'});
-    document.getElementById('pin-best-month').textContent = `${monthName} '${yr.slice(2)}`;
-    document.getElementById('pin-best-sub').textContent = `${bestMonth[1].toLocaleString()} impressions`;
+    document.getElementById('pin-best-month').textContent = new Date(yr, mo-1).toLocaleDateString('en-US',{month:'short'}) + " '" + yr.slice(2);
+    document.getElementById('pin-best-sub').textContent = bestMonth[1].toLocaleString() + ' impressions';
   }
 
-  // Update monthly trend chart
   const maxImpr = Math.max(...Object.values(monthly), 1);
   const bars = monthKeys.map(m => {
     const h = Math.max(2, Math.round((monthly[m]/maxImpr)*100));
@@ -976,97 +1009,57 @@ function parsePinCSV(text) {
     const [yr, mo] = m.split('-');
     return `<div class="tc-lbl">${new Date(yr, mo-1).toLocaleDateString('en-US',{month:'short'})}</div>`;
   }).join('');
-  document.getElementById('pin-trend-chart').innerHTML =
-    `<div class="trend-chart">${bars}</div><div class="trend-labels">${labels}</div>`;
+  document.getElementById('pin-trend-chart').innerHTML = `<div class="trend-chart">${bars}</div><div class="trend-labels">${labels}</div>`;
 
-  // Update boards bar chart
-  const maxBoard = Math.max(...boards.map(b => b.impr), 1);
-  const colors = ['var(--red)','var(--ol)','var(--red)','var(--ol)','var(--red)','var(--ol)','var(--red)','var(--ol)','var(--red)','var(--ol)','var(--red)'];
-  document.getElementById('pin-boards').innerHTML = boards.map((b, i) => {
+  const maxBoard = Math.max(...boards.map(b=>b.impr), 1);
+  const colors = ['var(--red)','var(--ol)','var(--red)','var(--ol)','var(--red)','var(--ol)'];
+  document.getElementById('pin-boards').innerHTML = boards.map((b,i) => {
     const w = Math.round((b.impr/maxBoard)*100);
     const isWestern = b.name.toLowerCase().includes('western');
-    const lbl = isWestern ? `⚠️ ${b.name} (underposted!)` : b.name;
     return `<div class="bar-row">
-      <div class="bar-lbl" title="${b.name}">${lbl}</div>
+      <div class="bar-lbl">${isWestern?'⚠️ '+b.name+' (underposted!)':b.name}</div>
       <div class="bar-track"><div class="bar-fill" style="width:${w}%;background:${isWestern?'var(--etsy)':colors[i%colors.length]}"></div></div>
       <div class="bar-val">${b.impr.toLocaleString()}</div>
     </div>`;
   }).join('');
 
-  // Update insight based on real data
+  const insightEl = document.getElementById('pin-insight');
   if (boards.length > 0) {
-    const western = boards.find(b => b.name.toLowerCase().includes('western'));
+    const western = boards.find(b=>b.name.toLowerCase().includes('western'));
     const topBoard = boards[0];
     let insight = `<strong>Top board:</strong> ${topBoard.name} with ${topBoard.impr.toLocaleString()} impressions. `;
-    if (western) {
-      insight += `<strong>Biggest gap:</strong> Western board has only ${western.impr.toLocaleString()} impressions despite Wild Wild West being your #2 Etsy seller. Post 3–5 more pins there this week.`;
-    }
-    document.getElementById('pin-insight').innerHTML = insight;
+    if (western) insight += `<strong>Gap:</strong> Western board has only ${western.impr.toLocaleString()} impressions despite Wild Wild West being your #2 seller. Post 3–5 more pins this week.`;
+    insightEl.innerHTML = insight;
+    insightEl.style.display = 'block';
   }
 
-  // Hide upload banner
-  document.getElementById('pin-connect-banner').style.display = 'none';
-
-  // Save to localStorage
-  try {
-    localStorage.setItem('pin_data', JSON.stringify({
-      totalImpressions, monthly, boards, pins: pins.slice(0,10),
-      savedAt: new Date().toISOString()
-    }));
-  } catch(e) {}
-
-  // Update summary Pinterest stat
   document.getElementById('pin-impr').textContent = totalImpressions.toLocaleString();
+
+  const updated = localStorage.getItem('pin_updated');
+  if (updated) {
+    const daysSince = (Date.now() - new Date(updated)) / (1000*60*60*24);
+    const staleEl = document.getElementById('pin-stale-banner');
+    if (staleEl) staleEl.style.display = daysSince > 7 ? 'block' : 'none';
+    const statusEl = document.getElementById('pin-upload-status');
+    const subEl = document.getElementById('pin-upload-sub');
+    if (statusEl && !statusEl.textContent.startsWith('✅')) {
+      statusEl.textContent = `Last updated ${Math.round(daysSince)} day${Math.round(daysSince)===1?'':'s'} ago · ${Object.keys(daily).length} days of data`;
+      if (subEl) subEl.textContent = `Drop a new weekly CSV anytime — duplicates are handled automatically`;
+    }
+  }
 }
 
 // Restore Pinterest data on load
 function restorePinData() {
-  const saved = localStorage.getItem('pin_data');
-  if (!saved) return;
   try {
-    const d = JSON.parse(saved);
-    // Rebuild a fake event to reuse the same rendering logic
-    // Just re-run with saved data
-    const monthKeys = Object.keys(d.monthly || {}).sort();
-    const dateRange = monthKeys.length > 0 ? monthKeys[0] + ' – ' + monthKeys[monthKeys.length-1] : '—';
-    document.getElementById('pin-impr').textContent = (d.totalImpressions || 0).toLocaleString();
-    document.getElementById('pin-impr-sub').textContent = dateRange;
-    const topPin = (d.pins || []).sort((a,b) => b.impr-a.impr)[0];
-    if (topPin) document.getElementById('pin-top').textContent = topPin.impr.toLocaleString();
-    const bestMonth = Object.entries(d.monthly || {}).sort((a,b) => b[1]-a[1])[0];
-    if (bestMonth) {
-      const [yr, mo] = bestMonth[0].split('-');
-      document.getElementById('pin-best-month').textContent = new Date(yr, mo-1).toLocaleDateString('en-US',{month:'short'}) + " '" + yr.slice(2);
-      document.getElementById('pin-best-sub').textContent = bestMonth[1].toLocaleString() + ' impressions';
-    }
-    // Trend chart
-    const maxImpr = Math.max(...Object.values(d.monthly || {}), 1);
-    const bars = monthKeys.map(m => {
-      const h = Math.max(2, Math.round((d.monthly[m]/maxImpr)*100));
-      const [yr, mo] = m.split('-');
-      const label = new Date(yr, mo-1).toLocaleDateString('en-US',{month:'short'}) + " '" + yr.slice(2);
-      return `<div class="tc-bar" style="height:${h}%;background:var(--red)"><span class="tip">${label}: ${d.monthly[m].toLocaleString()}</span></div>`;
-    }).join('');
-    const labels = monthKeys.map(m => {
-      const [yr, mo] = m.split('-');
-      return `<div class="tc-lbl">${new Date(yr, mo-1).toLocaleDateString('en-US',{month:'short'})}</div>`;
-    }).join('');
-    document.getElementById('pin-trend-chart').innerHTML = `<div class="trend-chart">${bars}</div><div class="trend-labels">${labels}</div>`;
-    // Boards
-    const colors = ['var(--red)','var(--ol)','var(--red)','var(--ol)','var(--red)','var(--ol)','var(--red)','var(--ol)','var(--red)','var(--ol)'];
-    const maxBoard = Math.max(...(d.boards||[]).map(b => b.impr), 1);
-    document.getElementById('pin-boards').innerHTML = (d.boards||[]).map((b,i) => {
-      const w = Math.round((b.impr/maxBoard)*100);
-      const isWestern = b.name.toLowerCase().includes('western');
-      return `<div class="bar-row">
-        <div class="bar-lbl">${isWestern?'⚠️ '+b.name+' (underposted!)':b.name}</div>
-        <div class="bar-track"><div class="bar-fill" style="width:${w}%;background:${isWestern?'var(--etsy)':colors[i%colors.length]}"></div></div>
-        <div class="bar-val">${b.impr.toLocaleString()}</div>
-      </div>`;
-    }).join('');
-    document.getElementById('pin-connect-banner').style.display = 'none';
+    const daily = JSON.parse(localStorage.getItem('pin_daily') || '{}');
+    const boards = JSON.parse(localStorage.getItem('pin_boards') || '[]');
+    const pins = JSON.parse(localStorage.getItem('pin_pins') || '[]');
+    if (Object.keys(daily).length > 0) renderPinData(daily, boards, pins);
   } catch(e) { console.log('Could not restore Pinterest data:', e); }
+  initPinDropZone();
 }
+
 
 // ── FINANCIALS ────────────────────────────────────
 const FIN_DATA = [
