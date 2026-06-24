@@ -1,26 +1,28 @@
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.status(200).end();
+
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) return res.status(401).json({ error: 'Missing access token' });
+
+  const { path, ...rest } = req.query;
+  if (!path) return res.status(400).json({ error: 'Missing path' });
 
   const KEYSTRING = '60megc96vue75h2ycvdkihb7';
   const SHARED_SECRET = '2grqd3qeoz';
-  const REFRESH_TOKEN = '19815826.cP_DVc304cHAAnxk7vtP-AB2zknPlCZfNj0Mry_nIKZDLzqOBa87-2uDdqLscFluLRlec0XTJg8MZEmjYaM6_9ZAvBY';
 
-  const body = new URLSearchParams({
-    grant_type: 'refresh_token',
-    client_id: KEYSTRING,
-    refresh_token: REFRESH_TOKEN,
-  });
+  const qs = new URLSearchParams(rest).toString();
+  const etsyUrl = `https://openapi.etsy.com/v3/application/${path}${qs ? '?' + qs : ''}`;
 
-  const response = await fetch('https://api.etsy.com/v3/public/oauth/token', {
-    method: 'POST',
+  const response = await fetch(etsyUrl, {
+    method: req.method,
     headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
+      'Authorization': `Bearer ${token}`,
       'x-api-key': `${KEYSTRING}:${SHARED_SECRET}`,
-    },
-    body: body.toString(),
+      'Accept': 'application/json'
+    }
   });
 
   const data = await response.json();
