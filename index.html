@@ -83,6 +83,18 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--tx);min-heigh
 /* ── SECTION HEADING ── */
 .sh{font-size:10px;font-weight:600;color:var(--mu);text-transform:uppercase;letter-spacing:.8px;margin:20px 0 10px;font-family:var(--font-mono);}
 
+/* ── AUDIENCE INSIGHTS ── */
+.audience-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+.audience-card{background:var(--bg3);border:1px solid var(--b);border-radius:8px;padding:16px;}
+.audience-card-title{font-size:10px;font-weight:600;color:var(--mu);text-transform:uppercase;letter-spacing:.7px;margin-bottom:12px;font-family:var(--font-mono);}
+.audience-row{display:flex;align-items:center;gap:8px;margin-bottom:7px;}
+.audience-label{font-size:12px;color:var(--m2);width:130px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.audience-track{flex:1;height:6px;background:var(--bg4);border-radius:3px;overflow:hidden;}
+.audience-fill{height:100%;border-radius:3px;}
+.audience-pct{font-size:11px;color:var(--m2);width:36px;text-align:right;flex-shrink:0;font-family:var(--font-mono);}
+.interest-chip{display:inline-block;background:var(--bg4);border:1px solid var(--b2);border-radius:20px;padding:4px 10px;font-size:11px;color:var(--m2);margin:3px;}
+.interest-chip.high{border-color:var(--pin);color:var(--pin);}
+
 /* ── PINTEREST UPLOAD BAR ── */
 .pin-upload-bar{display:flex;align-items:center;justify-content:space-between;gap:16px;background:var(--bg3);border:1px solid var(--b);border-left:3px solid var(--pin);border-radius:8px;padding:14px 18px;flex-wrap:wrap;}
 .pin-upload-left{flex:1;}
@@ -375,6 +387,17 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--tx);min-heigh
     <div class="sh">Top boards by impressions</div>
     <div class="bar-chart" id="pin-boards"></div>
     <div class="insight" id="pin-insight" style="display:none"></div>
+
+    <!-- AUDIENCE INSIGHTS -->
+    <div class="sh" style="margin-top:24px">Audience insights
+      <label style="float:right;font-size:11px;font-weight:600;color:var(--pin);cursor:pointer;text-transform:none;letter-spacing:0">
+        📂 Upload audience CSV
+        <input type="file" id="pin-audience-upload" accept=".csv" style="display:none" onchange="handleAudienceCSV(this)"/>
+      </label>
+    </div>
+    <div id="pin-audience-section">
+      <div style="color:var(--mu);font-size:12px;padding:12px 0">Upload your Pinterest audience insights CSV to see demographics. Export from Pinterest → Analytics → Audience insights → Export.</div>
+    </div>
   </div>
 
   <!-- META -->
@@ -622,7 +645,6 @@ function getDateRange() {
 window.onload = async function() {
   etsyToken = localStorage.getItem('etsy_token') || '';
   if (!etsyToken) {
-    // Try to get a fresh token automatically
     const refreshed = await refreshEtsyToken();
     if (refreshed) {
       document.getElementById('connect-banner').style.display = 'none';
@@ -633,6 +655,37 @@ window.onload = async function() {
     loadLiveEtsyData();
   }
   restorePinData();
+
+  // Pre-load audience data from Jun 2026 export if not already stored
+  if (!localStorage.getItem('pin_audience')) {
+    const preloaded = {
+      gender:    { Female:0.844, Male:0.075, 'Unspecified & custom':0.081 },
+      age:       { '25-34':0.593, '18-24':0.211, '35-44':0.137, '45-49':0.022, '50-54':0.013, '55-64':0.011 },
+      countries: { 'United States':0.264, India:0.069, Australia:0.061, Mexico:0.058, Philippines:0.047, Canada:0.047, Brazil:0.031, 'South Africa':0.025, Indonesia:0.022 },
+      metros:    { 'New York':0.071, 'Los Angeles':0.065, 'Dallas-Ft. Worth':0.046, 'Salt Lake City':0.027, Atlanta:0.024, Houston:0.023, Chicago:0.022, 'Phoenix':0.018, Detroit:0.017, 'Washington DC':0.016 },
+      devices:   { iPhone:0.705, Web:0.619, iPad:0.15, 'Android Mobile':0.126, 'Mobile Web':0.044 },
+      interests: {
+        'Art':{ pct:0.903, affinity:1.354 },
+        'Home Decor':{ pct:0.900, affinity:1.389 },
+        'Design':{ pct:0.885, affinity:1.508 },
+        'Entertainment':{ pct:0.867, affinity:1.345 },
+        "Women's Fashion":{ pct:0.854, affinity:1.516 },
+        'Beauty':{ pct:0.854, affinity:1.491 },
+        'DIY and Crafts':{ pct:0.850, affinity:1.565 },
+        'Food and Drinks':{ pct:0.843, affinity:1.392 },
+        'Holidays and Events':{ pct:0.826, affinity:1.718 },
+        'Travel':{ pct:0.795, affinity:1.337 },
+        'Education':{ pct:0.780, affinity:1.412 },
+        'Weddings':{ pct:0.741, affinity:2.140 },
+        'Health':{ pct:0.735, affinity:1.289 },
+        'Parenting':{ pct:0.686, affinity:1.743 },
+        'Architecture':{ pct:0.650, affinity:2.024 },
+        'Finance':{ pct:0.158, affinity:3.007 },
+      }
+    };
+    try { localStorage.setItem('pin_audience', JSON.stringify(preloaded)); } catch(e) {}
+    renderAudienceInsights(preloaded);
+  }
 };
 
 
@@ -888,7 +941,133 @@ async function sendIdea() {
 function addIdeaMsg(txt, role) { const el=document.getElementById('idea-msgs');const isB=role==='b';el.innerHTML+=`<div class="cmsg ${role}"><div class="cav ${role}">${isB?'PP':'Me'}</div><div class="cbubble">${txt}</div></div>`;el.scrollTop=el.scrollHeight; }
 function addIdeaThink() { const el=document.getElementById('idea-msgs');const id='t'+Date.now();el.innerHTML+=`<div class="cmsg b" id="${id}"><div class="cav b">PP</div><div class="cbubble"><span style="display:inline-flex;align-items:center;gap:6px"><span class="spinner"></span>Thinking...</span></div></div>`;el.scrollTop=el.scrollHeight;return id; }
 
-// ── PINTEREST CSV ─────────────────────────────────
+// ── AUDIENCE INSIGHTS ────────────────────────────
+function handleAudienceCSV(input) {
+  if (!input.files || !input.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = e => parseAudienceCSV(e.target.result);
+  reader.readAsText(input.files[0]);
+}
+
+function parseAudienceCSV(text) {
+  const lines = text.split('\n').map(l => l.trim());
+  const data = { gender:{}, age:{}, countries:{}, metros:{}, devices:{}, interests:{} };
+
+  let section = null;
+  for (const line of lines) {
+    if (!line) { section = null; continue; }
+    if (line.startsWith('Gender,')) { section = 'gender'; continue; }
+    if (line.startsWith('Age,')) { section = 'age'; continue; }
+    if (line.startsWith('Countries,')) { section = 'countries'; continue; }
+    if (line.startsWith('Metros,')) { section = 'metros'; continue; }
+    if (line.startsWith('Device,')) { section = 'devices'; continue; }
+    if (line.startsWith('Category,')) { section = 'interests'; continue; }
+
+    if (section === 'gender' || section === 'age' || section === 'countries' || section === 'metros' || section === 'devices') {
+      const parts = line.split(',');
+      if (parts.length >= 2) {
+        const pct = parseFloat(parts[1]);
+        if (!isNaN(pct)) data[section][parts[0]] = pct;
+      }
+    }
+    if (section === 'interests') {
+      const parts = line.split('",');
+      if (parts.length >= 3) {
+        const category = parts[0].replace(/^"?/, '');
+        const pct = parseFloat(parts[2]);
+        const affinity = parseFloat(parts[3]);
+        if (!isNaN(pct) && !data.interests[category]) {
+          data.interests[category] = { pct, affinity };
+        }
+      }
+    }
+  }
+
+  try { localStorage.setItem('pin_audience', JSON.stringify(data)); } catch(e) {}
+  renderAudienceInsights(data);
+}
+
+function renderAudienceInsights(data) {
+  const el = document.getElementById('pin-audience-section');
+  if (!el) return;
+
+  const barRow = (label, pct, color) => `
+    <div class="audience-row">
+      <div class="audience-label">${label}</div>
+      <div class="audience-track"><div class="audience-fill" style="width:${Math.round(pct*100)}%;background:${color}"></div></div>
+      <div class="audience-pct">${Math.round(pct*100)}%</div>
+    </div>`;
+
+  // Gender
+  const genderHTML = Object.entries(data.gender||{})
+    .sort((a,b)=>b[1]-a[1])
+    .map(([k,v]) => barRow(k, v, k==='Female'?'var(--pin)':k==='Male'?'var(--meta)':'var(--mu)'))
+    .join('');
+
+  // Age
+  const ageHTML = Object.entries(data.age||{})
+    .filter(([k]) => k !== '65+')
+    .sort((a,b)=>b[1]-a[1])
+    .map(([k,v]) => barRow(k, v, 'var(--ol)'))
+    .join('');
+
+  // Countries
+  const countryHTML = Object.entries(data.countries||{})
+    .filter(([k]) => k !== 'Other')
+    .sort((a,b)=>b[1]-a[1]).slice(0,6)
+    .map(([k,v]) => barRow(k, v, 'var(--etsy)'))
+    .join('');
+
+  // Top metros
+  const metroHTML = Object.entries(data.metros||{})
+    .sort((a,b)=>b[1]-a[1]).slice(0,6)
+    .map(([k,v]) => barRow(k, v, 'var(--etsy)'))
+    .join('');
+
+  // Devices
+  const deviceHTML = Object.entries(data.devices||{})
+    .sort((a,b)=>b[1]-a[1]).slice(0,5)
+    .map(([k,v]) => barRow(k, v, 'var(--m2)'))
+    .join('');
+
+  // Top interests by affinity
+  const interestChips = Object.entries(data.interests||{})
+    .sort((a,b)=>b[1].affinity-a[1].affinity).slice(0,16)
+    .map(([k,v]) => `<span class="interest-chip ${v.affinity>=2?'high':''}">${k} ${v.affinity>=2?'↑':''}</span>`)
+    .join('');
+
+  el.innerHTML = `
+    <div class="audience-grid">
+      <div class="audience-card">
+        <div class="audience-card-title">Gender</div>
+        ${genderHTML}
+      </div>
+      <div class="audience-card">
+        <div class="audience-card-title">Age</div>
+        ${ageHTML}
+      </div>
+      <div class="audience-card">
+        <div class="audience-card-title">Top Countries</div>
+        ${countryHTML}
+      </div>
+      <div class="audience-card">
+        <div class="audience-card-title">Top US Metros</div>
+        ${metroHTML}
+      </div>
+    </div>
+    <div class="audience-card" style="margin-bottom:16px">
+      <div class="audience-card-title">Device</div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap">${deviceHTML.replace(/class="audience-row"/g,'class="audience-row" style="flex:1;min-width:160px"')}</div>
+    </div>
+    <div class="audience-card">
+      <div class="audience-card-title">Top interest categories <span style="font-weight:400;color:var(--pin)">↑ = high affinity (2x+)</span></div>
+      <div style="margin-top:4px">${interestChips}</div>
+    </div>
+    <div class="insight ol" style="margin-top:16px">
+      <strong>💡 What this means for Prell's Prints:</strong> Your audience is <strong>${Math.round((data.gender?.Female||0)*100)}% female</strong>, primarily aged <strong>25–34</strong>, mostly in the <strong>US</strong> with strong interest in Art, Design, DIY & Events. This is exactly who buys party invitations — lean into lifestyle imagery and seasonal content targeting this demographic.
+    </div>`;
+}
+
 // ── PINTEREST CSV ─────────────────────────────────
 function initPinDropZone() {
   const zone = document.getElementById('pin-drop-zone');
@@ -1057,6 +1236,10 @@ function restorePinData() {
     const pins = JSON.parse(localStorage.getItem('pin_pins') || '[]');
     if (Object.keys(daily).length > 0) renderPinData(daily, boards, pins);
   } catch(e) { console.log('Could not restore Pinterest data:', e); }
+  try {
+    const audience = JSON.parse(localStorage.getItem('pin_audience') || 'null');
+    if (audience) renderAudienceInsights(audience);
+  } catch(e) {}
   initPinDropZone();
 }
 
