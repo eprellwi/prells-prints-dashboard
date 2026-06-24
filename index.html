@@ -26,7 +26,7 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--tx);min-heigh
   display:flex;align-items:center;padding:0 24px;gap:0;
   position:sticky;top:0;z-index:100;
 }
-.brand{font-family:var(--font-head);font-size:16px;font-weight:800;color:var(--tx);padding:14px 0;margin-right:28px;white-space:nowrap;letter-spacing:-.3px;}
+.brand{font-family:var(--font-body);font-size:14px;font-weight:700;color:var(--tx);padding:14px 0;margin-right:28px;white-space:nowrap;letter-spacing:.5px;text-transform:uppercase;}
 .brand span{color:var(--red);}
 .nav-tabs{display:flex;gap:0;flex:1;}
 .ntab{
@@ -82,6 +82,15 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--tx);min-heigh
 
 /* ── SECTION HEADING ── */
 .sh{font-size:10px;font-weight:600;color:var(--mu);text-transform:uppercase;letter-spacing:.8px;margin:20px 0 10px;font-family:var(--font-mono);}
+
+/* ── FINANCIALS ── */
+.ptab.af{background:#7B1A4B;border-color:#7B1A4B;color:#fff;}
+.fin-chart-wrap{margin-bottom:20px;}
+.fin-profit-pos{color:var(--ol);}
+.fin-profit-neg{color:var(--red);}
+.data-table td.pos{color:var(--ol);font-family:var(--font-mono);}
+.data-table td.neg{color:var(--red);font-family:var(--font-mono);}
+.data-table td.mono{font-family:var(--font-mono);}
 
 /* ── DATE FILTER ── */
 .date-filter-bar{display:flex;align-items:center;gap:8px;margin-bottom:20px;flex-wrap:wrap;}
@@ -262,6 +271,7 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--tx);min-heigh
     <button class="ptab" onclick="showAV('etsy',this)">Etsy</button>
     <button class="ptab" onclick="showAV('pinterest',this)">Pinterest</button>
     <button class="ptab" onclick="showAV('meta',this)">Meta</button>
+    <button class="ptab" onclick="showAV('financials',this)">💰 Financials</button>
   </div>
 
   <!-- SUMMARY -->
@@ -364,6 +374,32 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--tx);min-heigh
       <div class="insight mu"><strong>Audience insights</strong> — Age, gender, location, and interest breakdowns from your Meta pixel.</div>
       <div class="insight mu"><strong>Cross-platform ROAS</strong> — Compare return on ad spend across Pinterest and Meta side by side.</div>
       <div class="insight mu"><strong>Lookalike audiences</strong> — Find new buyers based on your best Etsy customers.</div>
+    </div>
+  </div>
+
+  <!-- FINANCIALS -->
+  <div class="pview" id="av-financials">
+    <div class="sh" style="margin-top:0">Monthly P&L — from your finance tracker</div>
+    <div class="stat-strip" id="fin-summary-stats" style="margin-bottom:20px"></div>
+
+    <div class="sh">Profit trend</div>
+    <div class="fin-chart-wrap">
+      <div class="trend-chart" id="fin-trend-chart" style="height:90px"></div>
+      <div class="trend-labels" id="fin-trend-labels"></div>
+    </div>
+
+    <div class="sh">Ad spend by channel</div>
+    <div class="bar-chart" id="fin-ad-bars"></div>
+
+    <div class="sh">Ad performance & recommendations</div>
+    <div id="fin-ad-insights"></div>
+
+    <div class="sh">Month-by-month breakdown</div>
+    <div class="table-wrap">
+      <table class="data-table" id="fin-table">
+        <thead><tr><th>Month</th><th>Sales</th><th>Fees</th><th>Etsy Ads</th><th>IG Ads</th><th>Google Ads</th><th>Profit</th><th>Margin</th></tr></thead>
+        <tbody id="fin-tbody"></tbody>
+      </table>
     </div>
   </div>
 
@@ -564,8 +600,9 @@ function showAV(id, btn) {
   document.querySelectorAll('#page-analytics .pview').forEach(v => v.classList.remove('show'));
   document.querySelectorAll('#page-analytics .ptab').forEach(b => b.className = 'ptab');
   document.getElementById('av-' + id).classList.add('show');
-  const cls = {summary:'aa',etsy:'ae',pinterest:'ap',meta:'am'};
+  const cls = {summary:'aa',etsy:'ae',pinterest:'ap',meta:'am',financials:'af'};
   btn.classList.add(cls[id]);
+  if (id === 'financials') renderFinancials();
 }
 
 // ── CONNECT ──────────────────────────────────────
@@ -989,6 +1026,164 @@ function restorePinData() {
     }).join('');
     document.getElementById('pin-connect-banner').style.display = 'none';
   } catch(e) { console.log('Could not restore Pinterest data:', e); }
+}
+
+// ── FINANCIALS ────────────────────────────────────
+const FIN_DATA = [
+  { month:'Sep 2024', sales:0,      fees:-1.00,   etsyAds:0,       igAds:0,       gAds:0,      profit:-1.00 },
+  { month:'Oct 2024', sales:33.75,  fees:-12.58,  etsyAds:-22.42,  igAds:0,       gAds:0,      profit:-1.25 },
+  { month:'Nov 2024', sales:153.00, fees:-29.76,  etsyAds:-66.69,  igAds:0,       gAds:0,      profit:56.55 },
+  { month:'Dec 2024', sales:196.50, fees:-36.95,  etsyAds:-51.85,  igAds:0,       gAds:0,      profit:107.70 },
+  { month:'Jan 2025', sales:58.50,  fees:-13.09,  etsyAds:-27.33,  igAds:0,       gAds:0,      profit:18.08 },
+  { month:'Feb 2025', sales:56.30,  fees:-13.89,  etsyAds:-60.25,  igAds:0,       gAds:0,      profit:-17.84 },
+  { month:'Mar 2025', sales:275.50, fees:-54.48,  etsyAds:-127.83, igAds:-159.03, gAds:0,      profit:-65.84 },
+  { month:'Apr 2025', sales:361.00, fees:-64.28,  etsyAds:-102.69, igAds:-527.71, gAds:-39.04, profit:-372.72 },
+  { month:'May 2025', sales:268.80, fees:-51.62,  etsyAds:-121.82, igAds:-90.69,  gAds:-682.28,profit:-677.61 },
+  { month:'Jun 2025', sales:241.55, fees:-44.62,  etsyAds:-117.78, igAds:0,       gAds:-69.30, profit:9.85 },
+  { month:'Jul 2025', sales:425.70, fees:-71.65,  etsyAds:-152.22, igAds:0,       gAds:0,      profit:201.83 },
+  { month:'Aug 2025', sales:460.60, fees:-70.29,  etsyAds:-181.90, igAds:0,       gAds:0,      profit:208.41 },
+  { month:'Sep 2025', sales:545.40, fees:-83.76,  etsyAds:-232.69, igAds:0,       gAds:0,      profit:228.95 },
+  { month:'Oct 2025', sales:825.00, fees:-121.76, etsyAds:-268.61, igAds:0,       gAds:0,      profit:434.63 },
+  { month:'Nov 2025', sales:1763.00,fees:-261.28, etsyAds:-309.85, igAds:0,       gAds:0,      profit:1191.87 },
+  { month:'Dec 2025', sales:1755.87,fees:-248.34, etsyAds:-407.94, igAds:0,       gAds:0,      profit:1099.59 },
+  { month:'Jan 2026', sales:1305.00,fees:-190.25, etsyAds:-423.87, igAds:0,       gAds:0,      profit:690.88 },
+  { month:'Feb 2026', sales:667.00, fees:-104.92, etsyAds:-402.93, igAds:0,       gAds:0,      profit:159.15 },
+  { month:'Mar 2026', sales:871.00, fees:-118.29, etsyAds:-321.67, igAds:0,       gAds:0,      profit:431.04 },
+  { month:'Apr 2026', sales:835.30, fees:-124.42, etsyAds:-304.83, igAds:0,       gAds:0,      profit:406.05 },
+  { month:'May 2026', sales:805.87, fees:-121.44, etsyAds:-336.28, igAds:0,       gAds:0,      profit:348.15 },
+  { month:'Jun 2026', sales:594.42, fees:-95.92,  etsyAds:-215.80, igAds:0,       gAds:0,      profit:282.70 },
+];
+
+const AD_DATA = [
+  { name:'Dinosaur Party',           views:2999,  clicks:89,  ctr:'3%',   orders:12, revenue:81.75, spend:21.49, roas:3.80 },
+  { name:'Kentucky Derby Party',     views:575,   clicks:6,   ctr:'1%',   orders:1,  revenue:10.00, spend:1.37,  roas:7.30 },
+  { name:'Party Animal Birthday',    views:5028,  clicks:122, ctr:'2.4%', orders:6,  revenue:54.00, spend:30.26, roas:1.78 },
+  { name:'Hot Cars Party',           views:4933,  clicks:149, ctr:'3%',   orders:8,  revenue:64.00, spend:39.65, roas:1.61 },
+  { name:'Italian Amalfi Bridal',    views:5493,  clicks:174, ctr:'3.2%', orders:5,  revenue:40.20, spend:31.49, roas:1.28 },
+  { name:"That's Amore Bundle",      views:1777,  clicks:40,  ctr:'2.3%', orders:3,  revenue:27.50, spend:10.09, roas:2.73 },
+  { name:'Candy Shop Party',         views:1286,  clicks:23,  ctr:'1.8%', orders:2,  revenue:15.00, spend:5.52,  roas:2.72 },
+  { name:'Fiesta Party',             views:1359,  clicks:25,  ctr:'1.8%', orders:2,  revenue:13.00, spend:5.75,  roas:2.26 },
+  { name:'Fresh Off The Market',     views:455,   clicks:12,  ctr:'2.6%', orders:1,  revenue:6.30,  spend:2.71,  roas:2.32 },
+  { name:'Ice Cream Party',          views:2307,  clicks:55,  ctr:'2.4%', orders:3,  revenue:20.00, spend:14.61, roas:1.37 },
+  { name:'Wild Wild West',           views:4268,  clicks:138, ctr:'3.2%', orders:3,  revenue:22.00, spend:26.34, roas:0.84 },
+  { name:'Monster Truck',            views:2254,  clicks:59,  ctr:'2.6%', orders:2,  revenue:16.00, spend:16.99, roas:0.94 },
+  { name:'Race Car',                 views:1782,  clicks:33,  ctr:'1.9%', orders:1,  revenue:8.00,  spend:10.72, roas:0.75 },
+  { name:"Farmer's Market Bridal",   views:470,   clicks:15,  ctr:'3.2%', orders:0,  revenue:0,     spend:5.58,  roas:0.00 },
+  { name:'Amalfi Bundle (no orders)',views:2072,  clicks:51,  ctr:'2.5%', orders:0,  revenue:0,     spend:13.01, roas:0.00 },
+  { name:'Indy 500',                 views:535,   clicks:6,   ctr:'1.1%', orders:0,  revenue:0,     spend:0.93,  roas:0.00 },
+  { name:'Crawfish Boil',            views:510,   clicks:8,   ctr:'1.6%', orders:0,  revenue:0,     spend:1.26,  roas:0.00 },
+];
+
+function renderFinancials() {
+  const recent = FIN_DATA.filter(d => d.sales > 0).slice(-12);
+
+  // Summary stats
+  const totalSales   = FIN_DATA.reduce((s,d)=>s+d.sales,0);
+  const totalProfit  = FIN_DATA.reduce((s,d)=>s+d.profit,0);
+  const totalEtsyAds = FIN_DATA.reduce((s,d)=>s+Math.abs(d.etsyAds),0);
+  const bestMonth    = [...FIN_DATA].sort((a,b)=>b.profit-a.profit)[0];
+  const avgMargin    = totalSales > 0 ? (totalProfit/totalSales*100).toFixed(1) : 0;
+
+  document.getElementById('fin-summary-stats').innerHTML = `
+    <div class="stat-cell accent">
+      <div class="sc-label">All-time Sales</div>
+      <div class="sc-val">$${Math.round(totalSales).toLocaleString()}</div>
+      <div class="sc-sub up">Since Sep 2024</div>
+    </div>
+    <div class="stat-cell">
+      <div class="sc-label">All-time Profit</div>
+      <div class="sc-val ${totalProfit>=0?'fin-profit-pos':'fin-profit-neg'}">$${Math.round(totalProfit).toLocaleString()}</div>
+      <div class="sc-sub">Net after all costs</div>
+    </div>
+    <div class="stat-cell">
+      <div class="sc-label">Best Month</div>
+      <div class="sc-val" style="font-size:14px">${bestMonth.month}</div>
+      <div class="sc-sub up">$${bestMonth.profit.toLocaleString()} profit</div>
+    </div>
+    <div class="stat-cell">
+      <div class="sc-label">Avg Net Margin</div>
+      <div class="sc-val">${avgMargin}%</div>
+      <div class="sc-sub">After fees & ads</div>
+    </div>`;
+
+  // Profit trend chart (last 12 months)
+  const profits = recent.map(d=>d.profit);
+  const maxAbs = Math.max(...profits.map(Math.abs), 1);
+  const bars = recent.map(d => {
+    const pct = Math.max(3, Math.round(Math.abs(d.profit)/maxAbs*100));
+    const color = d.profit >= 0 ? 'var(--ol)' : 'var(--red)';
+    const shortMonth = d.month.replace(' 20','\'');
+    return `<div class="tc-bar" style="height:${pct}%;background:${color}"><span class="tip">${d.month}: $${d.profit.toLocaleString()}</span></div>`;
+  }).join('');
+  const labels = recent.map(d=>`<div class="tc-lbl">${d.month.split(' ')[0].slice(0,3)}</div>`).join('');
+  document.getElementById('fin-trend-chart').innerHTML = bars;
+  document.getElementById('fin-trend-labels').innerHTML = labels;
+
+  // Ad spend bars
+  const totalEtsy = FIN_DATA.reduce((s,d)=>s+Math.abs(d.etsyAds),0);
+  const totalIG   = FIN_DATA.reduce((s,d)=>s+Math.abs(d.igAds),0);
+  const totalG    = FIN_DATA.reduce((s,d)=>s+Math.abs(d.gAds),0);
+  const totalAds  = totalEtsy + totalIG + totalG;
+  const adChannels = [
+    { name:'Etsy Ads', amt:totalEtsy, color:'var(--etsy)' },
+    { name:'Instagram Ads', amt:totalIG, color:'var(--pin)' },
+    { name:'Google Ads', amt:totalG, color:'var(--meta)' },
+  ];
+  document.getElementById('fin-ad-bars').innerHTML = adChannels.map(c => {
+    const w = Math.round((c.amt/totalAds)*100);
+    return `<div class="bar-row">
+      <div class="bar-lbl">${c.name}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${w}%;background:${c.color}"></div></div>
+      <div class="bar-val">$${Math.round(c.amt).toLocaleString()}</div>
+    </div>`;
+  }).join('');
+
+  // P&L table (most recent first)
+  document.getElementById('fin-tbody').innerHTML = [...FIN_DATA].reverse().filter(d=>d.sales>0||d.fees<0).map(d => {
+    const margin = d.sales > 0 ? (d.profit/d.sales*100).toFixed(0)+'%' : '—';
+    const profitClass = d.profit >= 0 ? 'pos' : 'neg';
+    return `<tr>
+      <td style="font-size:12px;white-space:nowrap">${d.month}</td>
+      <td class="mono">$${d.sales.toLocaleString()}</td>
+      <td class="neg">$${Math.abs(d.fees).toFixed(2)}</td>
+      <td class="neg">$${Math.abs(d.etsyAds).toFixed(2)}</td>
+      <td class="${Math.abs(d.igAds)>0?'neg':'mono'}">${d.igAds<0?'$'+Math.abs(d.igAds).toFixed(2):'—'}</td>
+      <td class="${Math.abs(d.gAds)>0?'neg':'mono'}">${d.gAds<0?'$'+Math.abs(d.gAds).toFixed(2):'—'}</td>
+      <td class="${profitClass}">$${d.profit.toLocaleString()}</td>
+      <td class="${profitClass}" style="font-size:11px">${margin}</td>
+    </tr>`;
+  }).join('');
+
+  // Ad insights
+  renderAdInsights();
+}
+
+function renderAdInsights() {
+  const winners  = AD_DATA.filter(d=>d.roas>=2).sort((a,b)=>b.roas-a.roas);
+  const losers   = AD_DATA.filter(d=>d.roas>0&&d.roas<1).sort((a,b)=>a.roas-b.roas);
+  const noReturn = AD_DATA.filter(d=>d.roas===0&&d.spend>0);
+  const hidden   = AD_DATA.filter(d=>d.roas>=2&&d.spend<10);
+
+  const insightEl = document.getElementById('fin-ad-insights');
+  if (!insightEl) return;
+
+  insightEl.innerHTML = `
+    <div class="insight ol" style="margin-bottom:10px">
+      <strong>🏆 Double down on these — ROAS ≥ 2x</strong><br>
+      ${winners.map(d=>`<span style="display:inline-block;margin:3px 6px 0 0;font-size:12px"><strong>${d.name}</strong> — ${d.roas}x ROAS ($${d.revenue} revenue, $${d.spend} spend)</span>`).join('<br>')}
+    </div>
+    <div class="insight" style="margin-bottom:10px">
+      <strong>⚠️ Pause or cut budget — ROAS below 1x (losing money)</strong><br>
+      ${losers.map(d=>`<span style="display:inline-block;margin:3px 6px 0 0;font-size:12px"><strong>${d.name}</strong> — ${d.roas}x ROAS (spent $${d.spend}, earned $${d.revenue})</span>`).join('<br>')}
+    </div>
+    <div class="insight mu" style="margin-bottom:10px">
+      <strong>🚫 Turn off — zero orders despite ad spend</strong><br>
+      ${noReturn.map(d=>`<span style="display:inline-block;margin:3px 6px 0 0;font-size:12px"><strong>${d.name}</strong> — $${d.spend} spent, $0 returned</span>`).join('<br>')}
+    </div>
+    <div class="insight me" style="margin-bottom:0">
+      <strong>💡 Hidden gems — high ROAS but underfunded</strong><br>
+      ${hidden.map(d=>`<span style="display:inline-block;margin:3px 6px 0 0;font-size:12px"><strong>${d.name}</strong> — ${d.roas}x ROAS but only $${d.spend} spent. Increase budget.</span>`).join('<br>')}
+    </div>`;
 }
 </script>
 </body>
