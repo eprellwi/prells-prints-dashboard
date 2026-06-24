@@ -637,8 +637,9 @@ async function connectEtsy() {
 async function proxyGet(path, params='') {
   const url = `${PROXY}?path=${encodeURIComponent(path)}${params ? '&' + params : ''}`;
   const r = await fetch(url, { headers: { 'Authorization': `Bearer ${etsyToken}` } });
-  if (!r.ok) throw new Error(`API error ${r.status}`);
-  return r.json();
+  const data = await r.json();
+  if (!r.ok) throw new Error(data?.error || `API error ${r.status}`);
+  return data;
 }
 
 async function loadLiveEtsyData() {
@@ -666,7 +667,7 @@ async function loadLiveEtsyData() {
     } catch(e) { console.log('Receipts unavailable:', e); }
 
     // Get active listings
-    const listings = await proxyGet(`shops/${shopId}/listings/active`, 'limit=10&sort_on=views&sort_order=desc');
+    const listings = await proxyGet(`shops/${shopId}/listings/active`, 'limit=10&sort_on=created&sort_order=desc');
 
     // Update summary
     const revDisplay = liveRevenue > 0 ? '$' + Math.round(liveRevenue).toLocaleString() : '$' + Math.round(shop.transaction_sold_count * 8.31).toLocaleString();
