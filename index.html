@@ -539,10 +539,34 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--tx);min-heigh
 <script>
 // ── CONFIG ──────────────────────────────────────
 const PROXY = 'https://prells-prints-dashboard.vercel.app/api/etsy';
+const REFRESH_PROXY = 'https://prells-prints-dashboard.vercel.app/api/etsy-refresh';
 let ideaHist = [], pubImgData = null;
 let etsyToken = localStorage.getItem('etsy_token') || '';
 let activeFilter = 'month';
 let customFrom = null, customTo = null;
+
+// ── TOKEN REFRESH ─────────────────────────────────
+async function refreshEtsyToken() {
+  try {
+    const r = await fetch(REFRESH_PROXY, { method: 'POST' });
+    const data = await r.json();
+    if (data.access_token) {
+      etsyToken = data.access_token;
+      localStorage.setItem('etsy_token', etsyToken);
+      // Store new refresh token if provided (Etsy rotates them)
+      if (data.refresh_token) {
+        localStorage.setItem('etsy_refresh_token', data.refresh_token);
+      }
+      console.log('✅ Etsy token auto-refreshed');
+      return true;
+    }
+    console.warn('Token refresh failed:', data);
+    return false;
+  } catch(e) {
+    console.warn('Token refresh error:', e);
+    return false;
+  }
+}
 
 // ── DATE FILTER ──────────────────────────────────
 function setFilter(type, btn) {
@@ -578,9 +602,16 @@ function getDateRange() {
 }
 
 // ── INIT ─────────────────────────────────────────
-window.onload = function() {
+window.onload = async function() {
   etsyToken = localStorage.getItem('etsy_token') || '';
-  if (etsyToken) {
+  if (!etsyToken) {
+    // Try to get a fresh token automatically
+    const refreshed = await refreshEtsyToken();
+    if (refreshed) {
+      document.getElementById('connect-banner').style.display = 'none';
+      loadLiveEtsyData();
+    }
+  } else {
     document.getElementById('connect-banner').style.display = 'none';
     loadLiveEtsyData();
   }
@@ -627,7 +658,16 @@ async function connectEtsy() {
 
 async function proxyGet(path, params='') {
   const url = `${PROXY}?path=${encodeURIComponent(path)}${params ? '&' + params : ''}`;
-  const r = await fetch(url, { headers: { 'Authorization': `Bearer ${etsyToken}` } });
+  let r = await fetch(url, { headers: { 'Authorization': `Bearer ${etsyToken}` } });
+
+  // If 401, try refreshing the token once and retry
+  if (r.status === 401) {
+    const refreshed = await refreshEtsyToken();
+    if (refreshed) {
+      r = await fetch(url, { headers: { 'Authorization': `Bearer ${etsyToken}` } });
+    }
+  }
+
   const data = await r.json();
   if (!r.ok) throw new Error(data?.error || `API error ${r.status}`);
   return data;
